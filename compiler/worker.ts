@@ -53,6 +53,7 @@ const htmlElementTypes = new Set([
   "HtmlElement",
   "HtmlSelfClosingElement",
   "HtmlVoidElement",
+  "HtmlRawNode",
   "HtmlDanglingMarkerOpen",
   "HtmlDanglingMarkerClose",
 ])
@@ -145,7 +146,9 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
   const documentVersion = optionalInteger(payload.document_version, 0)
   const analysis = analyze(profile, source, schema, documentVersion)
   const subjectAnalysis =
-    subject === null ? null : analyze("text/liquid@1", subject, schema, documentVersion, "subject", false)
+    subject === null
+      ? null
+      : analyze("text/liquid@1", subject, schema, documentVersion, "subject", false)
   const initialDiagnostics = [...analysis.diagnostics, ...(subjectAnalysis?.diagnostics ?? [])]
 
   if (initialDiagnostics.some((item) => item.severity === "error")) {
@@ -153,7 +156,14 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
   }
 
   const sourceHash = sha256(source)
-  const prepared = prepareSource(source, analysis, schema, compileValues, sourceHash, documentVersion)
+  const prepared = prepareSource(
+    source,
+    analysis,
+    schema,
+    compileValues,
+    sourceHash,
+    documentVersion,
+  )
   const diagnostics = [...initialDiagnostics, ...prepared.diagnostics]
   if (diagnostics.some((item) => item.severity === "error")) {
     return { diagnostics, analysis: publicAnalysis(analysis) }
@@ -209,10 +219,19 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
       )
     })
     if (mjmlDiagnostics.length > 0) {
-      return { diagnostics: [...diagnostics, ...mjmlDiagnostics], analysis: publicAnalysis(analysis) }
+      return {
+        diagnostics: [...diagnostics, ...mjmlDiagnostics],
+        analysis: publicAnalysis(analysis),
+      }
     }
 
-    const restored = restoreSentinels(String(result.html), prepared.sentinels, source, sourceHash, documentVersion)
+    const restored = restoreSentinels(
+      String(result.html),
+      prepared.sentinels,
+      source,
+      sourceHash,
+      documentVersion,
+    )
     return {
       diagnostics: [...diagnostics, ...restored.diagnostics],
       analysis: publicAnalysis(analysis),
@@ -285,7 +304,17 @@ function applyTranslationsPayload(payload: JsonObject): JsonObject {
     const range = unit.range as Position
     if (translated === null) {
       diagnostics.push(
-        diagnostic(source, sourceHash, documentVersion, range, "error", "LP_TRANSLATION_MISSING", "letterpress-translation", `Translation unit ${id} is missing`, { unit_id: id }),
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_TRANSLATION_MISSING",
+          "letterpress-translation",
+          `Translation unit ${id} is missing`,
+          { unit_id: id },
+        ),
       )
       continue
     }
@@ -293,7 +322,17 @@ function applyTranslationsPayload(payload: JsonObject): JsonObject {
     const translatedSignature = liquidSignature(translated)
     if (JSON.stringify(originalSignature) !== JSON.stringify(translatedSignature)) {
       diagnostics.push(
-        diagnostic(source, sourceHash, documentVersion, range, "error", "LP_TRANSLATION_PLACEHOLDER", "letterpress-translation", `Translation unit ${id} changed placeholders or markup`, { unit_id: id }),
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_TRANSLATION_PLACEHOLDER",
+          "letterpress-translation",
+          `Translation unit ${id} changed placeholders or markup`,
+          { unit_id: id },
+        ),
       )
       continue
     }
@@ -301,14 +340,21 @@ function applyTranslationsPayload(payload: JsonObject): JsonObject {
   }
 
   return {
-    source: diagnostics.some((item) => item.severity === "error") ? source : applyReplacements(source, replacements),
+    source: diagnostics.some((item) => item.severity === "error")
+      ? source
+      : applyReplacements(source, replacements),
     diagnostics,
   }
 }
 
 function translationText(value: unknown): string | null {
   if (typeof value === "string") return value
-  if (value && typeof value === "object" && !Array.isArray(value) && typeof (value as JsonObject).text === "string") {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof (value as JsonObject).text === "string"
+  ) {
     return String((value as JsonObject).text)
   }
   return null
@@ -348,17 +394,47 @@ function analyze(
 
   if (!Object.hasOwn(contract.profiles, profile)) {
     diagnostics.push(
-      diagnostic(source, sourceHash, documentVersion, { start: 0, end: 0 }, "error", "LP_PROFILE_UNKNOWN", "letterpress", `Unsupported profile ${profile}`, {}),
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: 0, end: 0 },
+        "error",
+        "LP_PROFILE_UNKNOWN",
+        "letterpress",
+        `Unsupported profile ${profile}`,
+        {},
+      ),
     )
   }
   if (encoder.encode(source).length > contract.limits.source_bytes) {
     diagnostics.push(
-      diagnostic(source, sourceHash, documentVersion, { start: 0, end: source.length }, "error", "LP_SOURCE_TOO_LARGE", "letterpress", "Source exceeds the profile byte limit", {}),
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: 0, end: source.length },
+        "error",
+        "LP_SOURCE_TOO_LARGE",
+        "letterpress",
+        "Source exceeds the profile byte limit",
+        {},
+      ),
     )
   }
   if (source.includes("\0")) {
     diagnostics.push(
-      diagnostic(source, sourceHash, documentVersion, { start: source.indexOf("\0"), end: source.indexOf("\0") + 1 }, "error", "LP_SOURCE_NUL", "letterpress", "Source contains a NUL character", {}),
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: source.indexOf("\0"), end: source.indexOf("\0") + 1 },
+        "error",
+        "LP_SOURCE_NUL",
+        "letterpress",
+        "Source contains a NUL character",
+        {},
+      ),
     )
   }
 
@@ -378,28 +454,75 @@ function analyze(
   if (profile === "email/mjml-liquid@1") {
     if (rootElements.length !== 1 || elementName(rootElements[0]) !== "mjml") {
       diagnostics.push(
-        diagnostic(source, sourceHash, documentVersion, rootElements[0]?.position ?? { start: 0, end: 0 }, "error", "LP_MJML_ROOT", "letterpress-mjml", "Email source must have exactly one mjml root element", {}),
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          rootElements[0]?.position ?? { start: 0, end: 0 },
+          "error",
+          "LP_MJML_ROOT",
+          "letterpress-mjml",
+          "Email source must have exactly one mjml root element",
+          {},
+        ),
       )
     }
-    const bodies = rootElements[0] ? childrenOf(rootElements[0]).filter((node) => elementName(node) === "mj-body") : []
+    const bodies = rootElements[0]
+      ? childrenOf(rootElements[0]).filter((node) => elementName(node) === "mj-body")
+      : []
     if (bodies.length !== 1) {
       diagnostics.push(
-        diagnostic(source, sourceHash, documentVersion, rootElements[0]?.position ?? { start: 0, end: 0 }, "error", "LP_MJML_BODY", "letterpress-mjml", "Email source must have exactly one mj-body element", {}),
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          rootElements[0]?.position ?? { start: 0, end: 0 },
+          "error",
+          "LP_MJML_BODY",
+          "letterpress-mjml",
+          "Email source must have exactly one mj-body element",
+          {},
+        ),
       )
     }
   }
 
   walk(ast, [], (node, ancestors, edge) => {
     if (htmlElementTypes.has(String(node.type))) {
-      validateElement(node, ancestors, source, sourceHash, documentVersion, profileData, diagnostics)
+      validateElement(
+        node,
+        ancestors,
+        source,
+        sourceHash,
+        documentVersion,
+        profileData,
+        diagnostics,
+      )
       collectTranslationUnit(node, ancestors, source, sourceHash, translationUnits)
     }
     if (node.type === "LiquidVariableOutput") {
       const context = contextOverride ?? contextFor(node, ancestors, edge, profile)
       const name = variableName(node)
       const filters = filtersOf(node)
-      variables.push({ name, context, position: node.position ?? { start: 0, end: 0 }, raw: rawLiquid(node), filters, local: localVariable(name, ancestors) })
-      validateLiquidUse(name, context, filters, node, schema, source, sourceHash, documentVersion, diagnostics)
+      variables.push({
+        name,
+        context,
+        position: node.position ?? { start: 0, end: 0 },
+        raw: rawLiquid(node),
+        filters,
+        local: localVariable(name, ancestors),
+      })
+      validateLiquidUse(
+        name,
+        context,
+        filters,
+        node,
+        schema,
+        source,
+        sourceHash,
+        documentVersion,
+        diagnostics,
+      )
     }
     if (liquidTagTypes.has(String(node.type))) {
       const name = String(node.name ?? "")
@@ -407,19 +530,44 @@ function analyze(
       tags.push({ name, position: node.position ?? { start: 0, end: 0 }, structural })
       if (!contract.liquid.tags.includes(name)) {
         diagnostics.push(
-          diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_LIQUID_TAG_FORBIDDEN", "letterpress-liquid", `Liquid tag ${name} is not allowed`, { tag: name }),
+          diagnostic(
+            source,
+            sourceHash,
+            documentVersion,
+            node.position ?? { start: 0, end: 0 },
+            "error",
+            "LP_LIQUID_TAG_FORBIDDEN",
+            "letterpress-liquid",
+            `Liquid tag ${name} is not allowed`,
+            { tag: name },
+          ),
         )
       }
     }
   })
 
-  const used = new Set(variables.filter((item) => !item.local).map((item) => item.name).filter(Boolean))
+  const used = new Set(
+    variables
+      .filter((item) => !item.local)
+      .map((item) => item.name)
+      .filter(Boolean),
+  )
   for (const name of lookupVariables(ast)) used.add(name)
   const declared = flattenSchema(schema)
   for (const name of [...used].sort()) {
     if (!declared.has(name) && !declared.has(name.split(".")[0] ?? name)) {
       diagnostics.push(
-        diagnostic(source, sourceHash, documentVersion, findVariablePosition(variables, name), "error", "LP_SCHEMA_UNDECLARED_VARIABLE", "letterpress-schema", `Variable ${name} is not declared in the schema`, { variable: name }),
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          findVariablePosition(variables, name),
+          "error",
+          "LP_SCHEMA_UNDECLARED_VARIABLE",
+          "letterpress-schema",
+          `Variable ${name} is not declared in the schema`,
+          { variable: name },
+        ),
       )
     }
   }
@@ -427,7 +575,17 @@ function analyze(
     for (const name of [...declared.keys()].sort()) {
       if (!used.has(name) && ![...used].some((usedName) => usedName.startsWith(`${name}.`))) {
         diagnostics.push(
-          diagnostic(source, sourceHash, documentVersion, { start: 0, end: 0 }, "hint", "LP_SCHEMA_UNUSED_VARIABLE", "letterpress-schema", `Variable ${name} is declared but not used`, { variable: name }),
+          diagnostic(
+            source,
+            sourceHash,
+            documentVersion,
+            { start: 0, end: 0 },
+            "hint",
+            "LP_SCHEMA_UNUSED_VARIABLE",
+            "letterpress-schema",
+            `Variable ${name} is declared but not used`,
+            { variable: name },
+          ),
         )
       }
     }
@@ -436,22 +594,126 @@ function analyze(
   return { ast, diagnostics, variables, tags, translation_units: translationUnits }
 }
 
-function validateElement(node: AstNode, ancestors: AstNode[], source: string, sourceHash: string, documentVersion: number, profile: JsonObject | undefined, diagnostics: Diagnostic[]): void {
-  if (!profile || profile.kind !== "email") return
+function validateElement(
+  node: AstNode,
+  ancestors: AstNode[],
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  profile: JsonObject | undefined,
+  diagnostics: Diagnostic[],
+): void {
+  if (profile?.kind !== "email") return
   const name = elementName(node)
+  if (name !== "mjml" && !name.startsWith("mj-")) {
+    validateEmbeddedHtml(node, source, sourceHash, documentVersion, diagnostics)
+    return
+  }
   const allowed = profile.elements as string[]
   const forbidden = profile.forbidden_elements as string[]
   if (forbidden.includes(name)) {
-    diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_MJML_ELEMENT_FORBIDDEN", "letterpress-mjml", `Element ${name} is forbidden`, { element: name }))
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_MJML_ELEMENT_FORBIDDEN",
+        "letterpress-mjml",
+        `Element ${name} is forbidden`,
+        { element: name },
+      ),
+    )
   } else if (name && !allowed.includes(name)) {
-    diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_MJML_UNKNOWN_ELEMENT", "letterpress-mjml", `Unknown MJML element ${name}`, { element: name }))
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_MJML_UNKNOWN_ELEMENT",
+        "letterpress-mjml",
+        `Unknown MJML element ${name}`,
+        { element: name },
+      ),
+    )
   }
 
   validateNesting(node, ancestors, source, sourceHash, documentVersion, profile, diagnostics)
   validateAttributes(node, source, sourceHash, documentVersion, profile, diagnostics)
 }
 
-function validateNesting(node: AstNode, ancestors: AstNode[], source: string, sourceHash: string, documentVersion: number, profile: JsonObject, diagnostics: Diagnostic[]): void {
+function validateEmbeddedHtml(
+  node: AstNode,
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  diagnostics: Diagnostic[],
+): void {
+  const name = elementName(node)
+  const policy = contract.embedded_html
+  if (!policy.elements.includes(name)) {
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_HTML_ELEMENT_FORBIDDEN",
+        "letterpress-html",
+        `HTML element ${name} is not allowed in MJML content`,
+        { element: name },
+      ),
+    )
+    return
+  }
+
+  const allowed = new Set([
+    ...policy.global_attributes,
+    ...((policy.attributes as Record<string, string[]>)[name] ?? []),
+  ])
+  const attributes = Array.isArray(node.attributes) ? (node.attributes as AstNode[]) : []
+  for (const attribute of attributes) {
+    const attributeNameValue = attributeName(attribute)
+    if (!attributeNameValue) continue
+    const allowedDataAttribute =
+      attributeNameValue.startsWith("data-") && /^data-[a-z0-9_.:-]+$/.test(attributeNameValue)
+    if (
+      attributeNameValue.startsWith("on") ||
+      (!allowed.has(attributeNameValue) && !allowedDataAttribute)
+    ) {
+      const range = (attribute.attributePosition as Position | undefined) ??
+        attribute.position ??
+        node.position ?? { start: 0, end: 0 }
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_HTML_ATTRIBUTE_FORBIDDEN",
+          "letterpress-html",
+          `HTML attribute ${attributeNameValue} is not allowed on ${name}`,
+          { attribute: attributeNameValue, element: name },
+        ),
+      )
+    }
+  }
+}
+
+function validateNesting(
+  node: AstNode,
+  ancestors: AstNode[],
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  profile: JsonObject,
+  diagnostics: Diagnostic[],
+): void {
   const parent = [...ancestors].reverse().find((item) => htmlElementTypes.has(String(item.type)))
   const parentName = elementName(parent)
   const name = elementName(node)
@@ -459,31 +721,100 @@ function validateNesting(node: AstNode, ancestors: AstNode[], source: string, so
   const dependencies = (profile.nesting as JsonObject | undefined)?.[parentName]
   if (!Array.isArray(dependencies)) return
   if (!dependencies.includes(name) && !dependencies.includes("*")) {
-    diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_MJML_INVALID_CHILD", "letterpress-mjml", `${name} is not allowed inside ${parentName}`, { element: name, parent: parentName }))
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_MJML_INVALID_CHILD",
+        "letterpress-mjml",
+        `${name} is not allowed inside ${parentName}`,
+        { element: name, parent: parentName },
+      ),
+    )
   }
 }
 
-function validateAttributes(node: AstNode, source: string, sourceHash: string, documentVersion: number, profile: JsonObject, diagnostics: Diagnostic[]): void {
+function validateAttributes(
+  node: AstNode,
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  profile: JsonObject,
+  diagnostics: Diagnostic[],
+): void {
   const name = elementName(node)
-  const metadata = (profile.element_metadata as JsonObject | undefined)?.[name] as JsonObject | undefined
-  const componentAttributes = metadata?.attributes && typeof metadata.attributes === "object" ? Object.keys(metadata.attributes as JsonObject) : []
-  const commonAttributes = Array.isArray(profile.common_attributes) ? profile.common_attributes.map(String) : []
+  const metadata = (profile.element_metadata as JsonObject | undefined)?.[name] as
+    | JsonObject
+    | undefined
+  const componentAttributes =
+    metadata?.attributes && typeof metadata.attributes === "object"
+      ? Object.keys(metadata.attributes as JsonObject)
+      : []
+  const commonAttributes = Array.isArray(profile.common_attributes)
+    ? profile.common_attributes.map(String)
+    : []
   const allowed = new Set([...componentAttributes, ...commonAttributes])
-  const attributes = Array.isArray(node.attributes) ? node.attributes as AstNode[] : []
+  const attributes = Array.isArray(node.attributes) ? (node.attributes as AstNode[]) : []
   for (const attribute of attributes) {
     const attributeNameValue = attributeName(attribute)
     if (!attributeNameValue) continue
-    if (attributeNameValue.startsWith("on") || attributeNameValue === "style" || !allowed.has(attributeNameValue)) {
-      const range = (attribute.attributePosition as Position | undefined) ?? attribute.position ?? node.position ?? { start: 0, end: 0 }
-      diagnostics.push(diagnostic(source, sourceHash, documentVersion, range, "error", "LP_MJML_ATTRIBUTE_FORBIDDEN", "letterpress-mjml", `Attribute ${attributeNameValue} is not allowed on ${name}`, { attribute: attributeNameValue, element: name }))
+    if (
+      attributeNameValue.startsWith("on") ||
+      attributeNameValue === "style" ||
+      !allowed.has(attributeNameValue)
+    ) {
+      const range = (attribute.attributePosition as Position | undefined) ??
+        attribute.position ??
+        node.position ?? { start: 0, end: 0 }
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_MJML_ATTRIBUTE_FORBIDDEN",
+          "letterpress-mjml",
+          `Attribute ${attributeNameValue} is not allowed on ${name}`,
+          { attribute: attributeNameValue, element: name },
+        ),
+      )
     }
   }
 }
 
-function validateLiquidUse(name: string, context: string, filters: string[], node: AstNode, schema: JsonObject, source: string, sourceHash: string, documentVersion: number, diagnostics: Diagnostic[]): void {
+function validateLiquidUse(
+  name: string,
+  context: string,
+  filters: string[],
+  node: AstNode,
+  schema: JsonObject,
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  diagnostics: Diagnostic[],
+): void {
   for (const filter of filters) {
-    if (!contract.liquid.filters.includes(filter) || contract.liquid.reserved_filters.includes(filter)) {
-      diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_LIQUID_FILTER_FORBIDDEN", "letterpress-liquid", `Liquid filter ${filter} is not allowed`, { filter }))
+    if (
+      !contract.liquid.filters.includes(filter) ||
+      contract.liquid.reserved_filters.includes(filter)
+    ) {
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          node.position ?? { start: 0, end: 0 },
+          "error",
+          "LP_LIQUID_FILTER_FORBIDDEN",
+          "letterpress-liquid",
+          `Liquid filter ${filter} is not allowed`,
+          { filter },
+        ),
+      )
     }
   }
   const definition = schemaDefinition(schema, name)
@@ -491,14 +822,50 @@ function validateLiquidUse(name: string, context: string, filters: string[], nod
   const phase = String(definition.phase ?? "delivery")
   const declaredContext = String(definition.context ?? "none")
   if (["css", "color"].includes(context) && phase !== "compile") {
-    diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_SCHEMA_PHASE_MISMATCH", "letterpress-schema", `${name} must be compile-phase in ${context} context`, { variable: name, context }))
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_SCHEMA_PHASE_MISMATCH",
+        "letterpress-schema",
+        `${name} must be compile-phase in ${context} context`,
+        { variable: name, context },
+      ),
+    )
   }
   if (declaredContext !== "none" && !compatibleContext(declaredContext, context)) {
-    diagnostics.push(diagnostic(source, sourceHash, documentVersion, node.position ?? { start: 0, end: 0 }, "error", "LP_SCHEMA_CONTEXT_MISMATCH", "letterpress-schema", `${name} is declared for ${declaredContext}, not ${context}`, { variable: name, expected: declaredContext, actual: context }))
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_SCHEMA_CONTEXT_MISMATCH",
+        "letterpress-schema",
+        `${name} is declared for ${declaredContext}, not ${context}`,
+        { variable: name, expected: declaredContext, actual: context },
+      ),
+    )
   }
 }
 
-function prepareSource(source: string, analysis: Analysis, schema: JsonObject, compileValues: JsonObject, sourceHash: string, documentVersion: number): { source: string; sentinels: Map<string, string>; diagnostics: Diagnostic[]; sourceMap: JsonObject } {
+function prepareSource(
+  source: string,
+  analysis: Analysis,
+  schema: JsonObject,
+  compileValues: JsonObject,
+  sourceHash: string,
+  documentVersion: number,
+): {
+  source: string
+  sentinels: Map<string, string>
+  diagnostics: Diagnostic[]
+  sourceMap: JsonObject
+} {
   const replacements: { start: number; end: number; value: string }[] = []
   const sentinels = new Map<string, string>()
   const diagnostics: Diagnostic[] = []
@@ -509,20 +876,61 @@ function prepareSource(source: string, analysis: Analysis, schema: JsonObject, c
     const phase = String(definition?.phase ?? "delivery")
     if (phase === "compile") {
       const value = valueAt(compileValues, use.name)
-      if (value === undefined && definition?.required !== false && definition?.default === undefined) {
-        diagnostics.push(diagnostic(source, sourceHash, documentVersion, use.position, "error", "LP_COMPILE_VALUE_MISSING", "letterpress-schema", `Required compile value ${use.name} is missing`, { variable: use.name }))
+      if (
+        value === undefined &&
+        definition?.required !== false &&
+        definition?.default === undefined
+      ) {
+        diagnostics.push(
+          diagnostic(
+            source,
+            sourceHash,
+            documentVersion,
+            use.position,
+            "error",
+            "LP_COMPILE_VALUE_MISSING",
+            "letterpress-schema",
+            `Required compile value ${use.name} is missing`,
+            { variable: use.name },
+          ),
+        )
         return
       }
       const resolved = value === undefined ? definition?.default : value
       const validated = validateCompileValue(resolved, use.context)
       if (validated.ok) replacements.push({ ...use.position, value: validated.value })
-      else diagnostics.push(diagnostic(source, sourceHash, documentVersion, use.position, "error", "LP_COMPILE_VALUE_INVALID", "letterpress-schema", `${use.name} is invalid for ${use.context} context`, { variable: use.name, context: use.context }))
+      else
+        diagnostics.push(
+          diagnostic(
+            source,
+            sourceHash,
+            documentVersion,
+            use.position,
+            "error",
+            "LP_COMPILE_VALUE_INVALID",
+            "letterpress-schema",
+            `${use.name} is invalid for ${use.context} context`,
+            { variable: use.name, context: use.context },
+          ),
+        )
       return
     }
 
     const token = `LPX_${sourceHash.slice(0, 16)}_${index.toString(36)}_XPL`
     if (source.includes(token)) {
-      diagnostics.push(diagnostic(source, sourceHash, documentVersion, use.position, "error", "LP_SENTINEL_COLLISION", "letterpress-compiler", "Source collides with an internal compiler sentinel", {}))
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          use.position,
+          "error",
+          "LP_SENTINEL_COLLISION",
+          "letterpress-compiler",
+          "Source collides with an internal compiler sentinel",
+          {},
+        ),
+      )
       return
     }
     const expression = `{{ ${use.raw} | letterpress_escape: "${use.context}" }}`
@@ -535,28 +943,55 @@ function prepareSource(source: string, analysis: Analysis, schema: JsonObject, c
   return { source: applyReplacements(source, replacements), sentinels, diagnostics, sourceMap }
 }
 
-function wrapStructuralTags(ast: AstNode, replacements: { start: number; end: number; value: string }[]): void {
+function wrapStructuralTags(
+  ast: AstNode,
+  replacements: { start: number; end: number; value: string }[],
+): void {
   walk(ast, [], (node, ancestors) => {
     if (!liquidTagTypes.has(String(node.type)) || !structuralContext(ancestors)) return
     const start = node.blockStartPosition as Position | undefined
     const end = node.blockEndPosition as Position | undefined
-    if (start && start.end > start.start) replacements.push({ ...start, value: `<mj-raw>${sliceNode(node, start)}</mj-raw>` })
-    if (end && end.end > end.start) replacements.push({ ...end, value: `<mj-raw>${sliceNode(node, end)}</mj-raw>` })
+    if (start && start.end > start.start)
+      replacements.push({ ...start, value: `<mj-raw>${sliceNode(node, start)}</mj-raw>` })
+    if (end && end.end > end.start)
+      replacements.push({ ...end, value: `<mj-raw>${sliceNode(node, end)}</mj-raw>` })
     for (const branch of childrenOf(node)) {
       if (branch.type !== "LiquidBranch") continue
       const branchStart = branch.blockStartPosition as Position | undefined
-      if (branchStart && branchStart.end > branchStart.start) replacements.push({ ...branchStart, value: `<mj-raw>${sliceNode(branch, branchStart)}</mj-raw>` })
+      if (branchStart && branchStart.end > branchStart.start)
+        replacements.push({
+          ...branchStart,
+          value: `<mj-raw>${sliceNode(branch, branchStart)}</mj-raw>`,
+        })
     }
   })
 }
 
-function restoreSentinels(output: string, sentinels: Map<string, string>, source: string, sourceHash: string, documentVersion: number): { output: string; diagnostics: Diagnostic[] } {
+function restoreSentinels(
+  output: string,
+  sentinels: Map<string, string>,
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+): { output: string; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = []
   let restored = output
   for (const [token, expression] of sentinels) {
     const count = restored.split(token).length - 1
     if (count === 0) {
-      diagnostics.push(diagnostic(source, sourceHash, documentVersion, { start: 0, end: 0 }, "error", "LP_SENTINEL_SURVIVAL", "letterpress-compiler", "Compiler did not preserve an expression sentinel", { count }))
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          { start: 0, end: 0 },
+          "error",
+          "LP_SENTINEL_SURVIVAL",
+          "letterpress-compiler",
+          "Compiler did not preserve an expression sentinel",
+          { count },
+        ),
+      )
     } else {
       restored = restored.replaceAll(token, expression)
     }
@@ -574,19 +1009,38 @@ function prepareSubject(
 ): string | null {
   if (subject === null) return null
   if (analysis === null) return subject
-  const prepared = prepareSource(subject, analysis, schema, compileValues, sourceHash, documentVersion)
-  return restoreSentinels(prepared.source, prepared.sentinels, subject, sourceHash, documentVersion).output
+  const prepared = prepareSource(
+    subject,
+    analysis,
+    schema,
+    compileValues,
+    sourceHash,
+    documentVersion,
+  )
+  return restoreSentinels(prepared.source, prepared.sentinels, subject, sourceHash, documentVersion)
+    .output
 }
 
 function publicAnalysis(analysis: Analysis): JsonObject {
   return {
     diagnostics: analysis.diagnostics,
-    variables: analysis.variables.map(({ name, context, position, filters }) => ({ name, context, position, filters })),
+    variables: analysis.variables.map(({ name, context, position, filters }) => ({
+      name,
+      context,
+      position,
+      filters,
+    })),
     translation_units: analysis.translation_units,
   }
 }
 
-function collectTranslationUnit(node: AstNode, ancestors: AstNode[], source: string, sourceHash: string, units: JsonObject[]): void {
+function collectTranslationUnit(
+  node: AstNode,
+  ancestors: AstNode[],
+  source: string,
+  sourceHash: string,
+  units: JsonObject[],
+): void {
   const name = elementName(node)
   const profile = contract.profiles["email/mjml-liquid@1"]
   if (!profile.text_elements.includes(name)) return
@@ -598,16 +1052,40 @@ function collectTranslationUnit(node: AstNode, ancestors: AstNode[], source: str
   const text = source.slice(start, end)
   if (text.trim() === "") return
   const path = [...ancestors.map(elementName).filter(Boolean), name].join("/")
-  units.push({ id: sha256(`${path}\0${text}`).slice(0, 24), context: "html_text", source: text, range: { start, end }, source_hash: sourceHash })
+  units.push({
+    id: sha256(`${path}\0${text}`).slice(0, 24),
+    context: "html_text",
+    source: text,
+    range: { start, end },
+    source_hash: sourceHash,
+  })
 }
 
-function walk(node: AstNode, ancestors: AstNode[], visit: (node: AstNode, ancestors: AstNode[], edge: string) => void, edge = "root"): void {
+function walk(
+  node: AstNode,
+  ancestors: AstNode[],
+  visit: (node: AstNode, ancestors: AstNode[], edge: string) => void,
+  edge = "root",
+): void {
   if (!node || typeof node !== "object") return
   visit(node, ancestors, edge)
   for (const [key, value] of Object.entries(node)) {
-    if (["source", "_source", "position", "blockStartPosition", "blockEndPosition", "markupPosition", "attributePosition"].includes(key)) continue
+    if (
+      [
+        "source",
+        "_source",
+        "position",
+        "blockStartPosition",
+        "blockEndPosition",
+        "markupPosition",
+        "attributePosition",
+      ].includes(key)
+    )
+      continue
     if (Array.isArray(value)) {
-      for (const child of value) if (child && typeof child === "object") walk(child as AstNode, [...ancestors, node], visit, key)
+      for (const child of value)
+        if (child && typeof child === "object")
+          walk(child as AstNode, [...ancestors, node], visit, key)
     } else if (value && typeof value === "object") {
       walk(value as AstNode, [...ancestors, node], visit, key)
     }
@@ -619,7 +1097,9 @@ function lookupVariables(ast: AstNode): string[] {
   walk(ast, [], (node, ancestors) => {
     if (node.type === "VariableLookup") {
       const root = String(node.name ?? "")
-      const lookups = Array.isArray(node.lookups) ? node.lookups.map((item) => String((item as JsonObject).value ?? "")) : []
+      const lookups = Array.isArray(node.lookups)
+        ? node.lookups.map((item) => String((item as JsonObject).value ?? ""))
+        : []
       const name = [root, ...lookups].filter(Boolean).join(".")
       if (root && !localVariable(name, ancestors)) names.add(name)
     }
@@ -649,7 +1129,9 @@ function childrenOf(node: AstNode): AstNode[] {
 }
 
 function elementName(node: AstNode | undefined): string {
-  if (!node || !Array.isArray(node.name)) return ""
+  if (!node) return ""
+  if (typeof node.name === "string") return node.name
+  if (!Array.isArray(node.name)) return ""
   return String((node.name[0] as JsonObject | undefined)?.value ?? "")
 }
 
@@ -663,7 +1145,9 @@ function contextFor(_node: AstNode, ancestors: AstNode[], edge: string, profile:
   if (parent?.type?.startsWith("Attr") || edge === "value") {
     const name = attributeName(parent)
     const email = contract.profiles["email/mjml-liquid@1"]
-    if (email.url_attributes.includes(name)) return "url"
+    if (email.url_attributes.includes(name) || contract.embedded_html.url_attributes.includes(name))
+      return "url"
+    if (name === "style") return "css"
     if (email.color_attributes.includes(name) || name.endsWith("-color")) return "color"
     return "html_attribute"
   }
@@ -680,7 +1164,9 @@ function structuralContext(ancestors: AstNode[]): boolean {
 function variableName(node: AstNode): string {
   const expression = ((node.markup as JsonObject | undefined)?.expression ?? {}) as JsonObject
   const root = String(expression.name ?? "")
-  const lookups = Array.isArray(expression.lookups) ? expression.lookups.map((item) => String((item as JsonObject).value ?? "")) : []
+  const lookups = Array.isArray(expression.lookups)
+    ? expression.lookups.map((item) => String((item as JsonObject).value ?? ""))
+    : []
   return [root, ...lookups].filter(Boolean).join(".")
 }
 
@@ -690,14 +1176,17 @@ function rawLiquid(node: AstNode): string {
 
 function filtersOf(node: AstNode): string[] {
   const filters = (node.markup as JsonObject | undefined)?.filters
-  return Array.isArray(filters) ? filters.map((item) => String((item as JsonObject).name ?? "")) : []
+  return Array.isArray(filters)
+    ? filters.map((item) => String((item as JsonObject).name ?? ""))
+    : []
 }
 
 function flattenSchema(schema: JsonObject): Map<string, JsonObject> {
   const variables = optionalObject(schema.variables)
   const result = new Map<string, JsonObject>()
   for (const [name, value] of Object.entries(variables)) {
-    if (value && typeof value === "object" && !Array.isArray(value)) result.set(name, value as JsonObject)
+    if (value && typeof value === "object" && !Array.isArray(value))
+      result.set(name, value as JsonObject)
   }
   return result
 }
@@ -723,20 +1212,34 @@ function valueAt(values: JsonObject, path: string): unknown {
   return current
 }
 
-function validateCompileValue(value: unknown, context: string): { ok: true; value: string } | { ok: false } {
+function validateCompileValue(
+  value: unknown,
+  context: string,
+): { ok: true; value: string } | { ok: false } {
   if (!["string", "number", "boolean"].includes(typeof value)) return { ok: false }
   const text = String(value)
   if (text.includes("\0") || /[{}<>]/.test(text)) return { ok: false }
-  if (context === "color" && !/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\([0-9., %]+\)|hsla?\([0-9., %]+\))$/.test(text)) return { ok: false }
+  if (
+    context === "color" &&
+    !/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]+|rgba?\([0-9., %]+\)|hsla?\([0-9., %]+\))$/.test(text)
+  )
+    return { ok: false }
   if (context === "css" && /[;{}]|url\s*\(/i.test(text)) return { ok: false }
   return { ok: true, value: context === "html_attribute" ? escapeAttribute(text) : text }
 }
 
 function escapeAttribute(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
 }
 
-function applyReplacements(source: string, replacements: { start: number; end: number; value: string }[]): string {
+function applyReplacements(
+  source: string,
+  replacements: { start: number; end: number; value: string }[],
+): string {
   const sorted = [...replacements].sort((a, b) => b.start - a.start || b.end - a.end)
   let output = source
   let previousStart = source.length + 1
@@ -756,15 +1259,44 @@ function findVariablePosition(uses: VariableUse[], name: string): Position {
   return uses.find((item) => item.name === name)?.position ?? { start: 0, end: 0 }
 }
 
-function parserDiagnostic(source: string, sourceHash: string, documentVersion: number, error: unknown): Diagnostic {
+function parserDiagnostic(
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  error: unknown,
+): Diagnostic {
   const record = error && typeof error === "object" ? (error as JsonObject) : {}
   const loc = (record.loc ?? {}) as JsonObject
   const locStart = (loc.start ?? {}) as JsonObject
-  const start = offsetForLineColumn(source, Number(locStart.line ?? record.line ?? 1), Number(locStart.column ?? record.column ?? 0))
-  return diagnostic(source, sourceHash, documentVersion, { start, end: start }, "error", "LP_PARSE", "letterpress-parser", normalizeError(error), {})
+  const start = offsetForLineColumn(
+    source,
+    Number(locStart.line ?? record.line ?? 1),
+    Number(locStart.column ?? record.column ?? 0),
+  )
+  return diagnostic(
+    source,
+    sourceHash,
+    documentVersion,
+    { start, end: start },
+    "error",
+    "LP_PARSE",
+    "letterpress-parser",
+    normalizeError(error),
+    {},
+  )
 }
 
-function diagnostic(source: string, sourceHash: string, documentVersion: number, position: Position, severity: Diagnostic["severity"], code: string, diagnosticSource: string, message: string, data: JsonObject): Diagnostic {
+function diagnostic(
+  source: string,
+  sourceHash: string,
+  documentVersion: number,
+  position: Position,
+  severity: Diagnostic["severity"],
+  code: string,
+  diagnosticSource: string,
+  message: string,
+  data: JsonObject,
+): Diagnostic {
   return {
     version: 1,
     source_hash: sourceHash,
@@ -790,7 +1322,8 @@ function pointAt(source: string, offset: number): { line: number; character: num
 function lineRange(source: string, oneBasedLine: number): Position {
   const lines = source.split("\n")
   let start = 0
-  for (let index = 0; index < Math.max(0, oneBasedLine - 1); index += 1) start += (lines[index]?.length ?? 0) + 1
+  for (let index = 0; index < Math.max(0, oneBasedLine - 1); index += 1)
+    start += (lines[index]?.length ?? 0) + 1
   return { start, end: start + (lines[Math.max(0, oneBasedLine - 1)]?.length ?? 0) }
 }
 
@@ -817,7 +1350,8 @@ function optionalString(value: unknown): string | null {
 }
 
 function requireObject(value: unknown, name: string): JsonObject {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${name} must be an object`)
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`${name} must be an object`)
   return value as JsonObject
 }
 

@@ -154,6 +154,62 @@ defmodule Letterpress.CompilerTest do
     assert {:ok, _} = Compiler.request(:contract, %{})
   end
 
+  test "accepts safe rich email content and exact official MJML attributes" do
+    source = """
+    <mjml lang="en" dir="ltr">
+      <mj-head>
+        <mj-attributes>
+          <mj-class name="body" color="#112233" />
+        </mj-attributes>
+      </mj-head>
+      <mj-body>
+        <mj-section padding="8px">
+          <mj-column>
+            <mj-text mj-class="body">
+              Hello <strong>{{ name }}</strong>
+              <a href="{{ action_url }}" rel="noopener" data-track="account">Open</a>
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+    """
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "action_url" => %{"type" => "url", "context" => "url"},
+        "name" => %{"type" => "string", "context" => "html_text"}
+      }
+    }
+
+    assert {:ok, artifact, []} = Letterpress.compile("email/mjml-liquid@1", source, schema)
+    assert artifact.html =~ "<strong>"
+    assert artifact.html =~ ~s(letterpress_escape: "url")
+  end
+
+  test "rejects unsafe embedded HTML and attributes that belong to another MJML element" do
+    cases = [
+      {"<mjml><mj-body><mj-section href=\"https://example.test\"><mj-column /></mj-section></mj-body></mjml>",
+       "LP_MJML_ATTRIBUTE_FORBIDDEN"},
+      {"<mjml><mj-body><mj-section><mj-column><mj-text><script>alert(1)</script></mj-text></mj-column></mj-section></mj-body></mjml>",
+       "LP_HTML_ELEMENT_FORBIDDEN"},
+      {"<mjml><mj-body><mj-section><mj-column><mj-text><a href=\"https://example.test\" onclick=\"steal()\">Open</a></mj-text></mj-column></mj-section></mj-body></mjml>",
+       "LP_HTML_ATTRIBUTE_FORBIDDEN"}
+    ]
+
+    for {source, code} <- cases do
+      assert {:error, diagnostics} =
+               Letterpress.compile(
+                 "email/mjml-liquid@1",
+                 source,
+                 %{"version" => 1, "variables" => %{}}
+               )
+
+      assert Enum.any?(diagnostics, &(&1.code == code)), inspect(diagnostics)
+    end
+  end
+
   @tag capture_log: true
   test "a worker timeout fails closed and supervision restores service" do
     previous = Application.get_env(:letterpress, :compiler_timeout)

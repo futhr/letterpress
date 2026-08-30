@@ -8,7 +8,7 @@ const generatedPath = "generated/letterpress-v1.json"
 const browserPath = "npm/language/src/generated/contract.ts"
 const source = JSON.parse(await readFile(sourcePath, "utf8"))
 
-const elementMetadata = Object.fromEntries(
+const componentMetadata = Object.fromEntries(
   Object.entries(core.components)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, component]) => [
@@ -20,6 +20,39 @@ const elementMetadata = Object.fromEntries(
       },
     ]),
 )
+
+const officialAttributes = sortObject(
+  Object.assign({}, ...Object.values(componentMetadata).map((component) => component.attributes)),
+)
+
+const elementMetadata = sortObject({
+  ...componentMetadata,
+  mjml: {
+    attributes: { dir: "enum(ltr,rtl,auto)", lang: "string", owa: "enum(mobile,desktop)" },
+    defaults: {},
+    ending_tag: true,
+  },
+  "mj-all": {
+    attributes: officialAttributes,
+    defaults: {},
+    ending_tag: false,
+  },
+  "mj-class": {
+    attributes: sortObject({ ...officialAttributes, name: "string" }),
+    defaults: {},
+    ending_tag: true,
+  },
+  "mj-selector": {
+    attributes: { path: "string" },
+    defaults: {},
+    ending_tag: true,
+  },
+  "mj-html-attribute": {
+    attributes: { name: "string" },
+    defaults: {},
+    ending_tag: true,
+  },
+})
 
 const nesting = Object.fromEntries(
   Object.entries(preset.dependencies)
@@ -56,5 +89,7 @@ await writeFile(
 )
 
 function sortObject(value) {
-  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)))
+  return Object.fromEntries(
+    Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
+  )
 }

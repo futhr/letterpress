@@ -47,20 +47,9 @@
         "mj-carousel",
         "mj-carousel-image"
       ],
-      "forbidden_elements": [
-        "mj-include"
-      ],
-      "url_attributes": [
-        "href",
-        "src",
-        "background-url",
-        "action"
-      ],
-      "color_attributes": [
-        "color",
-        "background-color",
-        "border-color"
-      ],
+      "forbidden_elements": ["mj-include"],
+      "url_attributes": ["href", "src", "background-url", "action"],
+      "color_attributes": ["color", "background-color", "border-color"],
       "text_elements": [
         "mj-text",
         "mj-button",
@@ -70,46 +59,8 @@
         "mj-accordion-title",
         "mj-accordion-text"
       ],
-      "structural_elements": [
-        "mj-body",
-        "mj-wrapper",
-        "mj-section",
-        "mj-group",
-        "mj-column"
-      ],
-      "common_attributes": [
-        "css-class",
-        "mj-class",
-        "padding",
-        "padding-top",
-        "padding-right",
-        "padding-bottom",
-        "padding-left",
-        "background-color",
-        "color",
-        "font-family",
-        "font-size",
-        "font-style",
-        "font-weight",
-        "line-height",
-        "letter-spacing",
-        "text-align",
-        "text-decoration",
-        "text-transform",
-        "align",
-        "vertical-align",
-        "width",
-        "height",
-        "border",
-        "border-radius",
-        "border-color",
-        "border-width",
-        "href",
-        "src",
-        "alt",
-        "title",
-        "target"
-      ],
+      "structural_elements": ["mj-body", "mj-wrapper", "mj-section", "mj-group", "mj-column"],
+      "common_attributes": ["css-class", "mj-class"],
       "element_metadata": {
         "mj-accordion": {
           "attributes": {
@@ -209,6 +160,122 @@
             "padding": "16px"
           },
           "ending_tag": true
+        },
+        "mj-all": {
+          "attributes": {
+            "align": "enum(left,right,center,justify)",
+            "alt": "string",
+            "background-color": "color",
+            "background-height": "unit(px,%)",
+            "background-position": "string",
+            "background-position-x": "string",
+            "background-position-y": "string",
+            "background-repeat": "enum(repeat,no-repeat)",
+            "background-size": "string",
+            "background-url": "string",
+            "background-width": "unit(px,%)",
+            "base-url": "string",
+            "border": "string",
+            "border-bottom": "string",
+            "border-color": "color",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-style": "string",
+            "border-top": "string",
+            "border-width": "unit(px)",
+            "cellpadding": "integer",
+            "cellspacing": "integer",
+            "color": "color",
+            "container-background-color": "color",
+            "direction": "enum(ltr,rtl)",
+            "fluid-on-mobile": "boolean",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "full-width": "enum(full-width,false,)",
+            "gap": "unit(px)",
+            "gutter": "unit(px,%)",
+            "hamburger": "string",
+            "height": "unit(px,%)",
+            "href": "string",
+            "ico-align": "enum(left,center,right)",
+            "ico-close": "string",
+            "ico-color": "color",
+            "ico-font-family": "string",
+            "ico-font-size": "unit(px,%)",
+            "ico-line-height": "unit(px,%,)",
+            "ico-open": "string",
+            "ico-padding": "unit(px,%){1,4}",
+            "ico-padding-bottom": "unit(px,%)",
+            "ico-padding-left": "unit(px,%)",
+            "ico-padding-right": "unit(px,%)",
+            "ico-padding-top": "unit(px,%)",
+            "ico-text-decoration": "string",
+            "ico-text-transform": "string",
+            "icon-align": "enum(top,middle,bottom)",
+            "icon-height": "unit(px,%)",
+            "icon-padding": "unit(px,%){1,4}",
+            "icon-position": "enum(left,right)",
+            "icon-size": "unit(px,%)",
+            "icon-unwrapped-alt": "string",
+            "icon-unwrapped-url": "string",
+            "icon-width": "unit(px,%)",
+            "icon-wrapped-alt": "string",
+            "icon-wrapped-url": "string",
+            "id": "string",
+            "inline": "string",
+            "inner-background-color": "color",
+            "inner-border": "string",
+            "inner-border-bottom": "string",
+            "inner-border-left": "string",
+            "inner-border-radius": "string",
+            "inner-border-right": "string",
+            "inner-border-top": "string",
+            "inner-padding": "unit(px,%){1,4}",
+            "inner-padding-bottom": "unit(px,%)",
+            "inner-padding-left": "unit(px,%)",
+            "inner-padding-right": "unit(px,%)",
+            "inner-padding-top": "unit(px,%)",
+            "left-icon": "string",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "max-height": "unit(px,%)",
+            "mode": "enum(horizontal,vertical)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "position": "enum(file-start)",
+            "rel": "string",
+            "right-icon": "string",
+            "role": "enum(none,presentation)",
+            "sizes": "string",
+            "src": "string",
+            "srcset": "string",
+            "table-layout": "enum(auto,fixed,initial,inherit)",
+            "target": "string",
+            "tb-border": "string",
+            "tb-border-radius": "string",
+            "tb-hover-border-color": "color",
+            "tb-selected-border-color": "color",
+            "tb-width": "unit(px,%)",
+            "text-align": "enum(left,center,right)",
+            "text-decoration": "string",
+            "text-padding": "unit(px,%){1,4}",
+            "text-transform": "string",
+            "thumbnails": "enum(visible,hidden,supported)",
+            "thumbnails-src": "string",
+            "title": "string",
+            "usemap": "string",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%,auto)"
+          },
+          "defaults": {},
+          "ending_tag": false
         },
         "mj-attributes": {
           "attributes": {},
@@ -341,6 +408,122 @@
           },
           "ending_tag": true
         },
+        "mj-class": {
+          "attributes": {
+            "align": "enum(left,right,center,justify)",
+            "alt": "string",
+            "background-color": "color",
+            "background-height": "unit(px,%)",
+            "background-position": "string",
+            "background-position-x": "string",
+            "background-position-y": "string",
+            "background-repeat": "enum(repeat,no-repeat)",
+            "background-size": "string",
+            "background-url": "string",
+            "background-width": "unit(px,%)",
+            "base-url": "string",
+            "border": "string",
+            "border-bottom": "string",
+            "border-color": "color",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-style": "string",
+            "border-top": "string",
+            "border-width": "unit(px)",
+            "cellpadding": "integer",
+            "cellspacing": "integer",
+            "color": "color",
+            "container-background-color": "color",
+            "direction": "enum(ltr,rtl)",
+            "fluid-on-mobile": "boolean",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "full-width": "enum(full-width,false,)",
+            "gap": "unit(px)",
+            "gutter": "unit(px,%)",
+            "hamburger": "string",
+            "height": "unit(px,%)",
+            "href": "string",
+            "ico-align": "enum(left,center,right)",
+            "ico-close": "string",
+            "ico-color": "color",
+            "ico-font-family": "string",
+            "ico-font-size": "unit(px,%)",
+            "ico-line-height": "unit(px,%,)",
+            "ico-open": "string",
+            "ico-padding": "unit(px,%){1,4}",
+            "ico-padding-bottom": "unit(px,%)",
+            "ico-padding-left": "unit(px,%)",
+            "ico-padding-right": "unit(px,%)",
+            "ico-padding-top": "unit(px,%)",
+            "ico-text-decoration": "string",
+            "ico-text-transform": "string",
+            "icon-align": "enum(top,middle,bottom)",
+            "icon-height": "unit(px,%)",
+            "icon-padding": "unit(px,%){1,4}",
+            "icon-position": "enum(left,right)",
+            "icon-size": "unit(px,%)",
+            "icon-unwrapped-alt": "string",
+            "icon-unwrapped-url": "string",
+            "icon-width": "unit(px,%)",
+            "icon-wrapped-alt": "string",
+            "icon-wrapped-url": "string",
+            "id": "string",
+            "inline": "string",
+            "inner-background-color": "color",
+            "inner-border": "string",
+            "inner-border-bottom": "string",
+            "inner-border-left": "string",
+            "inner-border-radius": "string",
+            "inner-border-right": "string",
+            "inner-border-top": "string",
+            "inner-padding": "unit(px,%){1,4}",
+            "inner-padding-bottom": "unit(px,%)",
+            "inner-padding-left": "unit(px,%)",
+            "inner-padding-right": "unit(px,%)",
+            "inner-padding-top": "unit(px,%)",
+            "left-icon": "string",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "max-height": "unit(px,%)",
+            "mode": "enum(horizontal,vertical)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "position": "enum(file-start)",
+            "rel": "string",
+            "right-icon": "string",
+            "role": "enum(none,presentation)",
+            "sizes": "string",
+            "src": "string",
+            "srcset": "string",
+            "table-layout": "enum(auto,fixed,initial,inherit)",
+            "target": "string",
+            "tb-border": "string",
+            "tb-border-radius": "string",
+            "tb-hover-border-color": "color",
+            "tb-selected-border-color": "color",
+            "tb-width": "unit(px,%)",
+            "text-align": "enum(left,center,right)",
+            "text-decoration": "string",
+            "text-padding": "unit(px,%){1,4}",
+            "text-transform": "string",
+            "thumbnails": "enum(visible,hidden,supported)",
+            "thumbnails-src": "string",
+            "title": "string",
+            "usemap": "string",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%,auto)"
+          },
+          "defaults": {},
+          "ending_tag": true
+        },
         "mj-column": {
           "attributes": {
             "background-color": "color",
@@ -458,6 +641,13 @@
             "vertical-align": "top"
           },
           "ending_tag": false
+        },
+        "mj-html-attribute": {
+          "attributes": {
+            "name": "string"
+          },
+          "defaults": {},
+          "ending_tag": true
         },
         "mj-html-attributes": {
           "attributes": {},
@@ -630,6 +820,13 @@
             "text-padding": "4px 4px 4px 0"
           },
           "ending_tag": false
+        },
+        "mj-selector": {
+          "attributes": {
+            "path": "string"
+          },
+          "defaults": {},
+          "ending_tag": true
         },
         "mj-social": {
           "attributes": {
@@ -863,33 +1060,26 @@
             "text-padding": "4px 4px 4px 0"
           },
           "ending_tag": false
+        },
+        "mjml": {
+          "attributes": {
+            "dir": "enum(ltr,rtl,auto)",
+            "lang": "string",
+            "owa": "enum(mobile,desktop)"
+          },
+          "defaults": {},
+          "ending_tag": true
         }
       },
       "nesting": {
-        "mj-accordion": [
-          "mj-accordion-element",
-          "mj-raw"
-        ],
-        "mj-accordion-element": [
-          "mj-accordion-text",
-          "mj-accordion-title",
-          "mj-raw"
-        ],
+        "mj-accordion": ["mj-accordion-element", "mj-raw"],
+        "mj-accordion-element": ["mj-accordion-text", "mj-accordion-title", "mj-raw"],
         "mj-accordion-text": [],
         "mj-accordion-title": [],
-        "mj-attributes": [
-          "*"
-        ],
-        "mj-body": [
-          "mj-hero",
-          "mj-raw",
-          "mj-section",
-          "mj-wrapper"
-        ],
+        "mj-attributes": ["*"],
+        "mj-body": ["mj-hero", "mj-raw", "mj-section", "mj-wrapper"],
         "mj-button": [],
-        "mj-carousel": [
-          "mj-carousel-image"
-        ],
+        "mj-carousel": ["mj-carousel-image"],
         "mj-carousel-image": [],
         "mj-column": [
           "mj-accordion",
@@ -905,10 +1095,7 @@
           "mj-text"
         ],
         "mj-divider": [],
-        "mj-group": [
-          "mj-column",
-          "mj-raw"
-        ],
+        "mj-group": ["mj-column", "mj-raw"],
         "mj-head": [
           "mj-attributes",
           "mj-breakpoint",
@@ -933,41 +1120,19 @@
           "mj-text"
         ],
         "mj-html-attribute": [],
-        "mj-html-attributes": [
-          "mj-selector"
-        ],
+        "mj-html-attributes": ["mj-selector"],
         "mj-image": [],
-        "mj-navbar": [
-          "mj-navbar-link",
-          "mj-raw"
-        ],
+        "mj-navbar": ["mj-navbar-link", "mj-raw"],
         "mj-raw": [],
-        "mj-section": [
-          "mj-column",
-          "mj-group",
-          "mj-raw"
-        ],
-        "mj-selector": [
-          "mj-html-attribute"
-        ],
-        "mj-social": [
-          "mj-raw",
-          "mj-social-element"
-        ],
+        "mj-section": ["mj-column", "mj-group", "mj-raw"],
+        "mj-selector": ["mj-html-attribute"],
+        "mj-social": ["mj-raw", "mj-social-element"],
         "mj-social-element": [],
         "mj-spacer": [],
         "mj-table": [],
         "mj-text": [],
-        "mj-wrapper": [
-          "mj-hero",
-          "mj-raw",
-          "mj-section"
-        ],
-        "mjml": [
-          "mj-body",
-          "mj-head",
-          "mj-raw"
-        ]
+        "mj-wrapper": ["mj-hero", "mj-raw", "mj-section"],
+        "mjml": ["mj-body", "mj-head", "mj-raw"]
       }
     },
     "text/liquid@1": {
@@ -979,15 +1144,7 @@
     }
   },
   "liquid": {
-    "tags": [
-      "if",
-      "unless",
-      "for",
-      "case",
-      "comment",
-      "break",
-      "continue"
-    ],
+    "tags": ["if", "unless", "for", "case", "comment", "break", "continue"],
     "filters": [
       "abs",
       "append",
@@ -1036,24 +1193,75 @@
       "url_encode",
       "where"
     ],
-    "reserved_filters": [
-      "letterpress_escape"
-    ]
+    "reserved_filters": ["letterpress_escape"]
   },
-  "contexts": [
-    "text",
-    "html_text",
-    "html_attribute",
-    "url",
-    "color",
-    "css",
-    "subject",
-    "none"
-  ],
-  "phases": [
-    "compile",
-    "delivery"
-  ],
+  "embedded_html": {
+    "elements": [
+      "a",
+      "abbr",
+      "b",
+      "blockquote",
+      "br",
+      "caption",
+      "code",
+      "div",
+      "em",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "hr",
+      "i",
+      "img",
+      "li",
+      "ol",
+      "p",
+      "pre",
+      "small",
+      "span",
+      "strong",
+      "sub",
+      "sup",
+      "table",
+      "tbody",
+      "td",
+      "tfoot",
+      "th",
+      "thead",
+      "tr",
+      "u",
+      "ul"
+    ],
+    "global_attributes": [
+      "align",
+      "aria-label",
+      "class",
+      "dir",
+      "height",
+      "id",
+      "lang",
+      "role",
+      "style",
+      "title",
+      "valign",
+      "width"
+    ],
+    "attributes": {
+      "a": ["href", "rel", "target"],
+      "img": ["alt", "src"],
+      "li": ["value"],
+      "ol": ["reversed", "start", "type"],
+      "table": ["border", "cellpadding", "cellspacing", "summary"],
+      "td": ["colspan", "headers", "rowspan", "scope"],
+      "th": ["abbr", "colspan", "headers", "rowspan", "scope"],
+      "ul": ["type"]
+    },
+    "url_attributes": ["href", "src"]
+  },
+  "contexts": ["text", "html_text", "html_attribute", "url", "color", "css", "subject", "none"],
+  "phases": ["compile", "delivery"],
   "types": [
     "string",
     "integer",
@@ -1101,6 +1309,8 @@
     "LP_INTERNAL_BOUNDARY",
     "LP_LIQUID_FILTER_FORBIDDEN",
     "LP_LIQUID_TAG_FORBIDDEN",
+    "LP_HTML_ATTRIBUTE_FORBIDDEN",
+    "LP_HTML_ELEMENT_FORBIDDEN",
     "LP_MJML_ATTRIBUTE_FORBIDDEN",
     "LP_MJML_BODY",
     "LP_MJML_COMPILE",
