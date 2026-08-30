@@ -605,6 +605,10 @@ function analyze(
     }
   })
 
+  if (profile === "text/liquid@1") {
+    collectTextTranslationUnit(ast, source, sourceHash, translationUnits)
+  }
+
   const dependencies = lookupDependencies(ast)
   const used = new Set(
     variables
@@ -1122,6 +1126,31 @@ function collectTranslationUnit(
     context: "html_text",
     source: text,
     range: { start, end },
+    source_hash: sourceHash,
+  })
+}
+
+function collectTextTranslationUnit(
+  ast: AstNode,
+  source: string,
+  sourceHash: string,
+  units: JsonObject[],
+): void {
+  let hasHumanText = false
+
+  walk(ast, [], (node) => {
+    if (node.type === "TextNode" && String(node.value ?? "").trim() !== "") {
+      hasHumanText = true
+    }
+  })
+
+  if (!hasHumanText) return
+
+  units.push({
+    id: sha256(`text/liquid@1\0text\0${source}`).slice(0, 24),
+    context: "text",
+    source,
+    range: { start: 0, end: source.length },
     source_hash: sourceHash,
   })
 }

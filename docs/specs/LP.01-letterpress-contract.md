@@ -281,6 +281,13 @@ nodes, and allow-listed human-facing attributes. IDs derive from profile,
 structural source path, context, and source text hash. Units include source
 range, context, source text, placeholders, and optional description.
 
+The `text/liquid@1` profile represents its human-facing content as one
+whole-document translation unit. This keeps surrounding whitespace and Liquid
+control flow intact for short notification bodies and email subjects while the
+placeholder-signature check prevents a translation provider from changing
+outputs or tags. A text document containing only whitespace and Liquid syntax
+has no translation unit.
+
 Applying translations:
 
 - requires an exact source hash and complete placeholder preservation;
@@ -368,6 +375,7 @@ One fixture corpus is consumed by Elixir and JavaScript tests. It includes:
 - Liquid output/filter/control grammar, nesting, whitespace, and malformed
   delimiters;
 - sentinel collisions, loss, duplication, relocation, and Unicode positions;
+- whole-document text translation, Liquid-only text, and placeholder preservation;
 - all schema types, phases, contexts, nested objects/lists, and invalid values;
 - escaping and injection payloads for HTML, attributes, URLs, subjects, CSS,
   and Liquid source;
