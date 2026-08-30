@@ -91,6 +91,13 @@ defmodule Letterpress.CompilerTest do
            ] = analysis["variables"]
   end
 
+  test "rejects legacy Mustache and Handlebars constructs with one stable diagnostic" do
+    for source <- ["{{#enabled}}yes{{/enabled}}", "{{#if enabled}}yes{{/if}}", "{{{html}}}"] do
+      assert {:error, diagnostics} = Letterpress.discover("text/liquid@1", source)
+      assert [%{code: "LP_LEGACY_SYNTAX", data: %{}}] = diagnostics
+    end
+  end
+
   test "discovers nested loop collections as scoped dependencies" do
     source =
       "{% for user in users %}{{ user.name }}{% for order in user.orders %}{{ order.id }}{% endfor %}{% endfor %}"

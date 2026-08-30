@@ -96,6 +96,19 @@ describe("Letterpress language contract", () => {
     expect(codes).toContain("letterpress · LP_HTML_ELEMENT_FORBIDDEN")
   })
 
+  it("reports legacy Mustache and Handlebars constructs locally", () => {
+    for (const source of [
+      "{{#enabled}}yes{{/enabled}}",
+      "{{#if enabled}}yes{{/if}}",
+      "{{{html}}}",
+    ]) {
+      const view = createView(source, "text/liquid@1")
+      expect(localDiagnostics(view, { profile: "text/liquid@1", schema })).toEqual([
+        expect.objectContaining({ source: "letterpress · LP_LEGACY_SYNTAX" }),
+      ])
+    }
+  })
+
   it("maps UTF-16 server ranges to document offsets", () => {
     const view = createView("😀 hello\nworld")
     const [diagnostic] = mapServerDiagnostics(view, [

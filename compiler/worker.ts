@@ -463,6 +463,31 @@ function analyze(
     )
   }
 
+  const legacySyntax = /\{\{\{|\{\{\s*[#/^!]/.exec(source)
+  if (legacySyntax?.index !== undefined) {
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: legacySyntax.index, end: legacySyntax.index + legacySyntax[0].length },
+        "error",
+        "LP_LEGACY_SYNTAX",
+        "letterpress-liquid",
+        "Legacy Mustache or Handlebars syntax is not supported; use Liquid tags",
+        {},
+      ),
+    )
+    return {
+      ast: {},
+      diagnostics,
+      variables,
+      dependencies: [],
+      tags,
+      translation_units: translationUnits,
+    }
+  }
+
   let ast: AstNode
   try {
     ast = toLiquidHtmlAST(source, {

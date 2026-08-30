@@ -46,7 +46,11 @@ defmodule Letterpress.RendererTest do
     assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_VALUE_INVALID"))
 
     assert {:error, diagnostics} = Letterpress.render(text, %{"name" => "Ada"})
-    assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_VALUE_MISSING"))
+
+    assert Enum.any?(diagnostics, fn diagnostic ->
+             diagnostic.code == "LP_RENDER_VALUE_MISSING" and
+               diagnostic.data == %{"variable" => "code"}
+           end)
 
     assert {:error, diagnostics} =
              Letterpress.render(text, %{"name" => "Ada", "code" => 123})

@@ -301,6 +301,18 @@ const htmlElementTypes = new Set([
 
 function validateDocument(source: string, config: LanguageConfig): CodeMirrorDiagnostic[] {
   const diagnostics: CodeMirrorDiagnostic[] = []
+  const legacySyntax = /\{\{\{|\{\{\s*[#/^!]/.exec(source)
+  if (legacySyntax?.index !== undefined) {
+    return [
+      {
+        from: legacySyntax.index,
+        to: legacySyntax.index + legacySyntax[0].length,
+        severity: "error",
+        source: "letterpress · LP_LEGACY_SYNTAX",
+        message: "Legacy Mustache or Handlebars syntax is not supported; use Liquid tags",
+      },
+    ]
+  }
   let ast: AstNode
   try {
     ast = toLiquidHtmlAST(source, {

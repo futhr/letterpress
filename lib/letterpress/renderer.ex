@@ -157,7 +157,8 @@ defmodule Letterpress.Renderer do
     Process.put(:letterpress_loop_limit, Contract.get()["limits"]["loop_iterations"])
 
     try do
-      with {:ok, parsed} <- Solid.parse(template, tags: allowed_tags()),
+      with :ok <- reject_legacy_syntax(template),
+           {:ok, parsed} <- Solid.parse(template, tags: allowed_tags()),
            {:ok, output, []} <-
              Solid.render(parsed, values,
                strict_variables: true,
@@ -176,6 +177,12 @@ defmodule Letterpress.Renderer do
       Process.delete(:letterpress_loop_iterations)
       Process.delete(:letterpress_loop_limit)
     end
+  end
+
+  defp reject_legacy_syntax(template) do
+    if Regex.match?(~r/\{\{\{|\{\{\s*[#\/^!]/, template),
+      do: {:error, :legacy_syntax},
+      else: :ok
   end
 
   defp allowed_tags do
@@ -325,8 +332,18 @@ defmodule Letterpress.Renderer do
   defp runtime_diagnostic(reason, source_hash) do
     {code, message} = runtime_diagnostic_message(reason)
 
-    %{Diagnostic.simple(code, message) | source_hash: source_hash}
+    %{
+      Diagnostic.simple(code, message)
+      | source_hash: source_hash,
+        data: runtime_diagnostic_data(reason)
+    }
   end
+
+  defp runtime_diagnostic_data({kind, name})
+       when kind in [:missing_value, :invalid_value, :unknown_value],
+       do: %{"variable" => name}
+
+  defp runtime_diagnostic_data(_), do: %{}
 
   defp runtime_diagnostic_message({:missing_value, name}),
     do: {"LP_RENDER_VALUE_MISSING", "Required delivery value #{name} is missing"}
@@ -366,6 +383,9 @@ defmodule Letterpress.Renderer do
 
   defp runtime_diagnostic_message({:liquid_parse, _}),
     do: {"LP_ARTIFACT_LIQUID", "Artifact contains invalid Liquid"}
+
+  defp runtime_diagnostic_message(:legacy_syntax),
+    do: {"LP_LEGACY_SYNTAX", "Artifact contains legacy Mustache or Handlebars syntax"}
 
   defp runtime_diagnostic_message({:render_process_exit, _}),
     do: {"LP_RENDER_RESOURCE_LIMIT", "Template render exceeded a resource limit"}
