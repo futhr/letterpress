@@ -18,7 +18,7 @@ defmodule Letterpress.Application do
   end
 
   defp maybe_add_compiler(children) do
-    if Application.get_env(:letterpress, :compiler_enabled, true) do
+    if Application.get_env(:letterpress, :compiler_enabled, true) == true do
       [Letterpress.Compiler.Supervisor | children]
     else
       children

@@ -14,7 +14,11 @@ defmodule Letterpress.Compiler.Supervisor do
 
   @impl true
   def init(_) do
-    count = max(Application.get_env(:letterpress, :compiler_pool_size, 2), 1)
+    count =
+      case Application.get_env(:letterpress, :compiler_pool_size, 2) do
+        configured when is_integer(configured) and configured > 0 -> configured
+        _ -> 1
+      end
 
     children =
       [{Registry, keys: :unique, name: Letterpress.Compiler.Registry}] ++

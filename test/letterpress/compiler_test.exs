@@ -146,6 +146,10 @@ defmodule Letterpress.CompilerTest do
     assert Compiler.status() == :disabled
     assert {:error, :compiler_disabled} = Compiler.request(:contract, %{})
 
+    Application.put_env(:letterpress, :compiler_enabled, nil)
+    assert Compiler.status() == :disabled
+    assert {:error, :compiler_disabled} = Compiler.request(:contract, %{})
+
     on_exit(fn ->
       Application.put_env(:letterpress, :compiler_enabled, previous)
 
@@ -154,6 +158,18 @@ defmodule Letterpress.CompilerTest do
         {:ok, _, _} -> :ok
       end
     end)
+  end
+
+  test "normalizes invalid worker-count configuration at the status boundary" do
+    previous = Application.get_env(:letterpress, :compiler_pool_size)
+
+    on_exit(fn -> Application.put_env(:letterpress, :compiler_pool_size, previous) end)
+
+    for configured <- [0, -1, nil, "one"] do
+      Application.put_env(:letterpress, :compiler_pool_size, configured)
+      assert Compiler.available?()
+      assert Compiler.status() == :ready
+    end
   end
 
   test "recognizes scoped loop variables without weakening schema checks" do

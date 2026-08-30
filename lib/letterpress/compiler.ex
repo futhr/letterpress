@@ -40,8 +40,14 @@ defmodule Letterpress.Compiler do
     end
   end
 
-  defp compiler_enabled?, do: Application.get_env(:letterpress, :compiler_enabled, true)
-  defp worker_count, do: max(Application.get_env(:letterpress, :compiler_pool_size, 2), 1)
+  defp compiler_enabled?, do: Application.get_env(:letterpress, :compiler_enabled, true) == true
+
+  defp worker_count do
+    case Application.get_env(:letterpress, :compiler_pool_size, 2) do
+      count when is_integer(count) and count > 0 -> count
+      _ -> 1
+    end
+  end
 
   defp available_indices do
     if Process.whereis(Letterpress.Compiler.Registry) do
