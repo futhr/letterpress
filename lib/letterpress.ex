@@ -44,26 +44,7 @@ defmodule Letterpress do
           {:ok, map(), [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
   def analyze(profile, source, schema, opts \\ []) do
     Telemetry.span(:analyze, profile_name(profile), input_size(source), fn ->
-      with :ok <- validate_source(source),
-           {:ok, opts} <- validate_options(opts, @base_options),
-           :ok <- Profile.validate(profile),
-           {:ok, normalized_schema} <- Schema.normalize(schema),
-           {:ok, result} <-
-             Compiler.request(
-               :analyze,
-               compiler_payload(profile, source, normalized_schema, opts)
-             ) do
-        diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
-
-        if Diagnostic.errors?(diagnostics) do
-          {:error, diagnostics}
-        else
-          {:ok, Map.drop(result, ["diagnostics"]), diagnostics}
-        end
-      else
-        {:error, diagnostics} when is_list(diagnostics) -> {:error, diagnostics}
-        {:error, reason} -> {:error, [Diagnostic.system(reason, profile, source, opts)]}
-      end
+      do_analyze(profile, source, schema, opts)
     end)
   end
 
@@ -111,31 +92,7 @@ defmodule Letterpress do
           {:ok, String.t(), [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
   def apply_translations(profile, source, schema, translations, opts \\ []) do
     Telemetry.span(:apply_translations, profile_name(profile), input_size(source), fn ->
-      with :ok <- validate_source(source),
-           {:ok, translations} <- normalize_json_map(translations),
-           {:ok, opts} <- validate_options(opts, @base_options),
-           :ok <- Profile.validate(profile),
-           {:ok, normalized_schema} <- Schema.normalize(schema),
-           {:ok, result} <-
-             Compiler.request(
-               :apply_translations,
-               compiler_payload(profile, source, normalized_schema, opts)
-               |> Map.put("translations", translations)
-             ) do
-        diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
-
-        if Diagnostic.errors?(diagnostics) do
-          {:error, diagnostics}
-        else
-          {:ok, result["source"], diagnostics}
-        end
-      else
-        {:error, diagnostics} when is_list(diagnostics) ->
-          {:error, diagnostics}
-
-        {:error, reason} ->
-          {:error, [Diagnostic.system(reason, profile_name(profile), source, opts)]}
-      end
+      do_apply_translations(profile, source, schema, translations, opts)
     end)
   end
 
@@ -181,6 +138,57 @@ defmodule Letterpress do
       "compile_values" => Keyword.get(opts, :compile_values, %{}),
       "document_version" => Keyword.fetch!(opts, :document_version)
     }
+  end
+
+  defp do_analyze(profile, source, schema, opts) do
+    with :ok <- validate_source(source),
+         {:ok, opts} <- validate_options(opts, @base_options),
+         :ok <- Profile.validate(profile),
+         {:ok, normalized_schema} <- Schema.normalize(schema),
+         {:ok, result} <-
+           Compiler.request(:analyze, compiler_payload(profile, source, normalized_schema, opts)) do
+      finish_analysis(result)
+    else
+      {:error, diagnostics} when is_list(diagnostics) -> {:error, diagnostics}
+      {:error, reason} -> {:error, [Diagnostic.system(reason, profile, source, opts)]}
+    end
+  end
+
+  defp finish_analysis(result) do
+    diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
+
+    if Diagnostic.errors?(diagnostics),
+      do: {:error, diagnostics},
+      else: {:ok, Map.drop(result, ["diagnostics"]), diagnostics}
+  end
+
+  defp do_apply_translations(profile, source, schema, translations, opts) do
+    with :ok <- validate_source(source),
+         {:ok, translations} <- normalize_json_map(translations),
+         {:ok, opts} <- validate_options(opts, @base_options),
+         :ok <- Profile.validate(profile),
+         {:ok, normalized_schema} <- Schema.normalize(schema),
+         payload =
+           profile
+           |> compiler_payload(source, normalized_schema, opts)
+           |> Map.put("translations", translations),
+         {:ok, result} <- Compiler.request(:apply_translations, payload) do
+      finish_translation(result)
+    else
+      {:error, diagnostics} when is_list(diagnostics) ->
+        {:error, diagnostics}
+
+      {:error, reason} ->
+        {:error, [Diagnostic.system(reason, profile_name(profile), source, opts)]}
+    end
+  end
+
+  defp finish_translation(result) do
+    diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
+
+    if Diagnostic.errors?(diagnostics),
+      do: {:error, diagnostics},
+      else: {:ok, result["source"], diagnostics}
   end
 
   defp validate_options(opts, schema) when is_list(opts) do

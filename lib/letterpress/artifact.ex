@@ -62,35 +62,12 @@ defmodule Letterpress.Artifact do
   @spec from_compiler(String.t(), String.t(), map(), keyword(), map()) ::
           {:ok, t()} | {:error, term()}
   def from_compiler(profile, source, schema, opts, result) do
-    with %{"compiled" => compiled, "compiler" => compiler} <- result do
-      variables =
-        schema["variables"]
-        |> Enum.map(fn {name, definition} -> Map.put(definition, "name", name) end)
-        |> Enum.sort_by(& &1["name"])
+    case result do
+      %{"compiled" => compiled, "compiler" => compiler} ->
+        build_compiler_artifact(profile, source, schema, opts, result, compiled, compiler)
 
-      data = %{
-        "artifact_version" => 1,
-        "profile" => profile,
-        "source_sha256" => sha256(source),
-        "schema_sha256" => Schema.hash(schema),
-        "options_sha256" => CanonicalJSON.hash(artifact_options(opts)),
-        "compiler" =>
-          compiler
-          |> Map.put("letterpress", Letterpress.version())
-          |> Map.put("bundle_sha256", bundle_hash()),
-        "subject" => compiled["subject"],
-        "html" => compiled["html"],
-        "text" => compiled["text"],
-        "variables" => variables,
-        "translation_units" => get_in(result, ["analysis", "translation_units"]) || [],
-        "source_map" => compiled["source_map"] || %{},
-        "lint" => non_error_diagnostics(result["diagnostics"] || [])
-      }
-
-      map = Map.put(data, "content_sha256", CanonicalJSON.hash(data))
-      decode(map)
-    else
-      _ -> {:error, :compiler_result_incomplete}
+      _ ->
+        {:error, :compiler_result_incomplete}
     end
   end
 
@@ -104,9 +81,7 @@ defmodule Letterpress.Artifact do
     with :ok <- validate_version(map),
          :ok <- validate_shape(map),
          :ok <- validate_hash(map),
-         {:ok, artifact} <- build(map) do
-      {:ok, artifact}
-    end
+         do: build(map)
   end
 
   def decode(_), do: {:error, :invalid_artifact}
@@ -140,6 +115,36 @@ defmodule Letterpress.Artifact do
       "lint" => artifact.lint,
       "content_sha256" => artifact.content_sha256
     }
+  end
+
+  defp build_compiler_artifact(profile, source, schema, opts, result, compiled, compiler) do
+    variables =
+      schema["variables"]
+      |> Enum.map(fn {name, definition} -> Map.put(definition, "name", name) end)
+      |> Enum.sort_by(& &1["name"])
+
+    data = %{
+      "artifact_version" => 1,
+      "profile" => profile,
+      "source_sha256" => sha256(source),
+      "schema_sha256" => Schema.hash(schema),
+      "options_sha256" => CanonicalJSON.hash(artifact_options(opts)),
+      "compiler" =>
+        compiler
+        |> Map.put("letterpress", Letterpress.version())
+        |> Map.put("bundle_sha256", bundle_hash()),
+      "subject" => compiled["subject"],
+      "html" => compiled["html"],
+      "text" => compiled["text"],
+      "variables" => variables,
+      "translation_units" => get_in(result, ["analysis", "translation_units"]) || [],
+      "source_map" => compiled["source_map"] || %{},
+      "lint" => non_error_diagnostics(result["diagnostics"] || [])
+    }
+
+    data
+    |> Map.put("content_sha256", CanonicalJSON.hash(data))
+    |> decode()
   end
 
   defp validate_version(%{"artifact_version" => 1}), do: :ok
@@ -307,15 +312,26 @@ defmodule Letterpress.Artifact do
     required = ~w(id context source range source_hash)
     allowed = required ++ ~w(description placeholders)
 
-    Enum.all?(required, &Map.has_key?(unit, &1)) and Map.keys(unit) -- allowed == [] and
-      is_binary(unit["id"]) and Regex.match?(~r/\A[0-9a-f]{24}\z/, unit["id"]) and
-      unit["context"] in @delivery_contexts and is_binary(unit["source"]) and
-      unit["source_hash"] == source_hash and valid_range?(unit["range"]) and
-      (not Map.has_key?(unit, "description") or is_binary(unit["description"])) and
-      (not Map.has_key?(unit, "placeholders") or is_list(unit["placeholders"]))
+    valid_translation_shape?(unit, required, allowed) and
+      valid_translation_identity?(unit, source_hash) and valid_translation_optional?(unit)
   end
 
   defp valid_translation_unit?(_, _), do: false
+
+  defp valid_translation_shape?(unit, required, allowed) do
+    Enum.all?(required, &Map.has_key?(unit, &1)) and Map.keys(unit) -- allowed == []
+  end
+
+  defp valid_translation_identity?(unit, source_hash) do
+    is_binary(unit["id"]) and Regex.match?(~r/\A[0-9a-f]{24}\z/, unit["id"]) and
+      unit["context"] in @delivery_contexts and is_binary(unit["source"]) and
+      unit["source_hash"] == source_hash and valid_range?(unit["range"])
+  end
+
+  defp valid_translation_optional?(unit) do
+    (not Map.has_key?(unit, "description") or is_binary(unit["description"])) and
+      (not Map.has_key?(unit, "placeholders") or is_list(unit["placeholders"]))
+  end
 
   defp validate_source_map(source_map) when is_map(source_map) do
     if Enum.all?(source_map, fn {token, entry} ->

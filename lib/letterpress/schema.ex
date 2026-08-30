@@ -103,61 +103,73 @@ defmodule Letterpress.Schema do
     phase = definition["phase"] || "delivery"
     context = definition["context"] || "text"
 
-    cond do
-      unknown != [] ->
-        {:error,
-         [
-           Diagnostic.simple(
-             "LP_SCHEMA_FIELD",
-             "Unknown fields for #{name}: #{Enum.join(unknown, ", ")}"
-           )
-         ]}
+    with :ok <- validate_fields(name, unknown),
+         :ok <- validate_member(name, "type", type, types),
+         :ok <- validate_member(name, "phase", phase, phases),
+         :ok <- validate_member(name, "context", context, contexts),
+         :ok <- validate_phase_context(name, phase, context),
+         :ok <- validate_boolean_field(name, definition, "required", true),
+         :ok <- validate_boolean_field(name, definition, "sensitive", false) do
+      normalized =
+        definition
+        |> Map.put("phase", phase)
+        |> Map.put("context", context)
+        |> Map.put_new("required", true)
+        |> Map.put_new("sensitive", false)
 
-      type not in types ->
-        {:error, [Diagnostic.simple("LP_SCHEMA_TYPE", "Invalid type for #{name}")]}
-
-      phase not in phases ->
-        {:error, [Diagnostic.simple("LP_SCHEMA_PHASE", "Invalid phase for #{name}")]}
-
-      context not in contexts ->
-        {:error, [Diagnostic.simple("LP_SCHEMA_CONTEXT", "Invalid context for #{name}")]}
-
-      phase == "delivery" and context in ["css", "color"] ->
-        {:error,
-         [
-           Diagnostic.simple(
-             "LP_SCHEMA_PHASE_CONTEXT",
-             "#{name} must be compile-phase in #{context} context"
-           )
-         ]}
-
-      not is_boolean(Map.get(definition, "required", true)) ->
-        {:error,
-         [Diagnostic.simple("LP_SCHEMA_REQUIRED", "required must be boolean for #{name}")]}
-
-      not is_boolean(Map.get(definition, "sensitive", false)) ->
-        {:error,
-         [Diagnostic.simple("LP_SCHEMA_SENSITIVE", "sensitive must be boolean for #{name}")]}
-
-      true ->
-        normalized =
-          definition
-          |> Map.put("phase", phase)
-          |> Map.put("context", context)
-          |> Map.put_new("required", true)
-          |> Map.put_new("sensitive", false)
-
-        with :ok <- validate_description(name, normalized),
-             {:ok, normalized} <- normalize_shape(name, normalized, 1),
-             :ok <- validate_default(name, normalized) do
-          {:ok, normalized}
-        end
+      with :ok <- validate_description(name, normalized),
+           {:ok, normalized} <- normalize_shape(name, normalized, 1),
+           :ok <- validate_default(name, normalized) do
+        {:ok, normalized}
+      end
     end
   end
 
   defp normalize_definition(name, _) do
     {:error,
      [Diagnostic.simple("LP_SCHEMA_DEFINITION", "Definition for #{name} must be an object")]}
+  end
+
+  defp validate_fields(_, []), do: :ok
+
+  defp validate_fields(name, fields) do
+    {:error,
+     [
+       Diagnostic.simple(
+         "LP_SCHEMA_FIELD",
+         "Unknown fields for #{name}: #{Enum.join(fields, ", ")}"
+       )
+     ]}
+  end
+
+  defp validate_member(name, field, value, allowed) do
+    if value in allowed do
+      :ok
+    else
+      code = "LP_SCHEMA_#{String.upcase(field)}"
+      {:error, [Diagnostic.simple(code, "Invalid #{field} for #{name}")]}
+    end
+  end
+
+  defp validate_phase_context(name, "delivery", context) when context in ["css", "color"] do
+    {:error,
+     [
+       Diagnostic.simple(
+         "LP_SCHEMA_PHASE_CONTEXT",
+         "#{name} must be compile-phase in #{context} context"
+       )
+     ]}
+  end
+
+  defp validate_phase_context(_, _, _), do: :ok
+
+  defp validate_boolean_field(name, definition, field, default) do
+    if is_boolean(Map.get(definition, field, default)) do
+      :ok
+    else
+      code = "LP_SCHEMA_#{String.upcase(field)}"
+      {:error, [Diagnostic.simple(code, "#{field} must be boolean for #{name}")]}
+    end
   end
 
   defp validate_default(name, %{"default" => value, "type" => type} = definition) do
@@ -338,26 +350,8 @@ defmodule Letterpress.Schema do
   def value_matches_definition?(value, %{"type" => "object", "properties" => properties})
       when is_map(value) and not is_struct(value) and is_map(properties) do
     case JSON.normalize_object(value) do
-      {:ok, value} ->
-        Map.keys(value) -- Map.keys(properties) == [] and
-          Enum.all?(properties, fn {name, definition} ->
-            property_value = value[name]
-
-            cond do
-              is_nil(property_value) and definition["required"] == true and
-                  not Map.has_key?(definition, "default") ->
-                false
-
-              is_nil(property_value) ->
-                true
-
-              true ->
-                value_matches_definition?(property_value, definition)
-            end
-          end)
-
-      {:error, _} ->
-        false
+      {:ok, value} -> valid_object_properties?(value, properties)
+      {:error, _} -> false
     end
   end
 
@@ -369,4 +363,17 @@ defmodule Letterpress.Schema do
     do: value_matches_type?(value, type)
 
   def value_matches_definition?(_, _), do: false
+
+  defp valid_object_properties?(value, properties) do
+    Map.keys(value) -- Map.keys(properties) == [] and
+      Enum.all?(properties, fn {name, definition} ->
+        valid_property?(value[name], definition)
+      end)
+  end
+
+  defp valid_property?(nil, %{"required" => true} = definition),
+    do: Map.has_key?(definition, "default")
+
+  defp valid_property?(nil, _), do: true
+  defp valid_property?(value, definition), do: value_matches_definition?(value, definition)
 end

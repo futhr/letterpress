@@ -61,7 +61,7 @@ defmodule Letterpress.Compiler.Worker do
     with true <- byte_size(frame) <= state.max_frame_bytes,
          {:ok, response} <- Jason.decode(frame),
          true <- response["id"] == pending.id do
-      Process.cancel_timer(pending.timer)
+      _ = Process.cancel_timer(pending.timer)
       GenServer.reply(pending.from, response_result(response))
       {:noreply, start_next(%{state | pending: nil})}
     else
@@ -178,7 +178,7 @@ defmodule Letterpress.Compiler.Worker do
 
   defp fail_waiters(%{pending: pending, queue: queue}, reason) do
     if pending do
-      Process.cancel_timer(pending.timer)
+      _ = Process.cancel_timer(pending.timer)
       GenServer.reply(pending.from, {:error, reason})
     end
 

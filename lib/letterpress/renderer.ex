@@ -140,19 +140,17 @@ defmodule Letterpress.Renderer do
     channels
     |> Enum.reject(fn {_, template} -> is_nil(template) end)
     |> Enum.reduce_while({:ok, %{}}, fn {channel, template}, {:ok, acc} ->
-      case render_template(template, values) do
-        {:ok, output} ->
-          if within_output_limit?(output, opts) do
-            {:cont, {:ok, Map.put(acc, channel, output)}}
-          else
-            {:halt, {:error, :render_output_too_large}}
-          end
-
-        error ->
-          {:halt, error}
-      end
+      reduce_rendered_channel(render_template(template, values), channel, acc, opts)
     end)
   end
+
+  defp reduce_rendered_channel({:ok, output}, channel, acc, opts) do
+    if within_output_limit?(output, opts),
+      do: {:cont, {:ok, Map.put(acc, channel, output)}},
+      else: {:halt, {:error, :render_output_too_large}}
+  end
+
+  defp reduce_rendered_channel(error, _, _, _), do: {:halt, error}
 
   defp render_template(template, values) do
     Process.put(:letterpress_loop_iterations, 0)
@@ -209,12 +207,9 @@ defmodule Letterpress.Renderer do
     if next.keys > limits["input_keys"] do
       {:error, :render_input_too_many_keys}
     else
-      Enum.reduce_while(value, {:ok, next}, fn {_, child}, {:ok, current} ->
-        case inspect_value(child, depth + 1, limits, current) do
-          {:ok, updated} -> {:cont, {:ok, updated}}
-          error -> {:halt, error}
-        end
-      end)
+      value
+      |> Map.values()
+      |> inspect_children(depth, limits, next)
     end
   end
 
@@ -224,12 +219,7 @@ defmodule Letterpress.Renderer do
     if next.items > limits["collection_items"] do
       {:error, :render_input_too_many_items}
     else
-      Enum.reduce_while(value, {:ok, next}, fn child, {:ok, current} ->
-        case inspect_value(child, depth + 1, limits, current) do
-          {:ok, updated} -> {:cont, {:ok, updated}}
-          error -> {:halt, error}
-        end
-      end)
+      inspect_children(value, depth, limits, next)
     end
   end
 
@@ -244,6 +234,15 @@ defmodule Letterpress.Renderer do
        do: {:ok, counts}
 
   defp do_inspect_value(_, _, _, _), do: {:error, :render_input_invalid}
+
+  defp inspect_children(children, depth, limits, counts) do
+    Enum.reduce_while(children, {:ok, counts}, fn child, {:ok, current} ->
+      continue_inspection(inspect_value(child, depth + 1, limits, current))
+    end)
+  end
+
+  defp continue_inspection({:ok, updated}), do: {:cont, {:ok, updated}}
+  defp continue_inspection(error), do: {:halt, error}
 
   defp within_output_limit?(output, opts) do
     max =
@@ -324,56 +323,55 @@ defmodule Letterpress.Renderer do
   end
 
   defp runtime_diagnostic(reason, source_hash) do
-    {code, message} =
-      case reason do
-        {:missing_value, name} ->
-          {"LP_RENDER_VALUE_MISSING", "Required delivery value #{name} is missing"}
-
-        {:invalid_value, name} ->
-          {"LP_RENDER_VALUE_INVALID", "Delivery value #{name} has the wrong type"}
-
-        {:unknown_value, name} ->
-          {"LP_RENDER_VALUE_UNKNOWN", "Delivery value #{name} is not declared"}
-
-        :invalid_render_options ->
-          {"LP_OPTIONS_INVALID", "Render options are invalid"}
-
-        :render_timeout ->
-          {"LP_RENDER_TIMEOUT", "Template render exceeded its deadline"}
-
-        :render_output_too_large ->
-          {"LP_RENDER_OUTPUT_LIMIT", "Rendered output exceeds its byte limit"}
-
-        :render_loop_limit ->
-          {"LP_RENDER_LOOP_LIMIT", "Template render exceeds its loop iteration limit"}
-
-        :render_input_too_deep ->
-          {"LP_RENDER_INPUT_DEPTH", "Render input exceeds its depth limit"}
-
-        :render_input_too_many_keys ->
-          {"LP_RENDER_INPUT_KEYS", "Render input has too many keys"}
-
-        :render_input_too_many_items ->
-          {"LP_RENDER_INPUT_ITEMS", "Render input has too many collection items"}
-
-        :render_scalar_too_large ->
-          {"LP_RENDER_INPUT_SCALAR", "Render input scalar exceeds its byte limit"}
-
-        {:liquid_errors, _} ->
-          {"LP_RENDER_LIQUID", "Liquid rendering failed"}
-
-        {:liquid_parse, _} ->
-          {"LP_ARTIFACT_LIQUID", "Artifact contains invalid Liquid"}
-
-        {:render_process_exit, _} ->
-          {"LP_RENDER_RESOURCE_LIMIT", "Template render exceeded a resource limit"}
-
-        _ ->
-          {"LP_RENDER_INVALID", "Template artifact or render input is invalid"}
-      end
+    {code, message} = runtime_diagnostic_message(reason)
 
     %{Diagnostic.simple(code, message) | source_hash: source_hash}
   end
+
+  defp runtime_diagnostic_message({:missing_value, name}),
+    do: {"LP_RENDER_VALUE_MISSING", "Required delivery value #{name} is missing"}
+
+  defp runtime_diagnostic_message({:invalid_value, name}),
+    do: {"LP_RENDER_VALUE_INVALID", "Delivery value #{name} has the wrong type"}
+
+  defp runtime_diagnostic_message({:unknown_value, name}),
+    do: {"LP_RENDER_VALUE_UNKNOWN", "Delivery value #{name} is not declared"}
+
+  defp runtime_diagnostic_message(:invalid_render_options),
+    do: {"LP_OPTIONS_INVALID", "Render options are invalid"}
+
+  defp runtime_diagnostic_message(:render_timeout),
+    do: {"LP_RENDER_TIMEOUT", "Template render exceeded its deadline"}
+
+  defp runtime_diagnostic_message(:render_output_too_large),
+    do: {"LP_RENDER_OUTPUT_LIMIT", "Rendered output exceeds its byte limit"}
+
+  defp runtime_diagnostic_message(:render_loop_limit),
+    do: {"LP_RENDER_LOOP_LIMIT", "Template render exceeds its loop iteration limit"}
+
+  defp runtime_diagnostic_message(:render_input_too_deep),
+    do: {"LP_RENDER_INPUT_DEPTH", "Render input exceeds its depth limit"}
+
+  defp runtime_diagnostic_message(:render_input_too_many_keys),
+    do: {"LP_RENDER_INPUT_KEYS", "Render input has too many keys"}
+
+  defp runtime_diagnostic_message(:render_input_too_many_items),
+    do: {"LP_RENDER_INPUT_ITEMS", "Render input has too many collection items"}
+
+  defp runtime_diagnostic_message(:render_scalar_too_large),
+    do: {"LP_RENDER_INPUT_SCALAR", "Render input scalar exceeds its byte limit"}
+
+  defp runtime_diagnostic_message({:liquid_errors, _}),
+    do: {"LP_RENDER_LIQUID", "Liquid rendering failed"}
+
+  defp runtime_diagnostic_message({:liquid_parse, _}),
+    do: {"LP_ARTIFACT_LIQUID", "Artifact contains invalid Liquid"}
+
+  defp runtime_diagnostic_message({:render_process_exit, _}),
+    do: {"LP_RENDER_RESOURCE_LIMIT", "Template render exceeded a resource limit"}
+
+  defp runtime_diagnostic_message(_),
+    do: {"LP_RENDER_INVALID", "Template artifact or render input is invalid"}
 
   defp artifact_profile(%Artifact{profile: profile}), do: profile
   defp artifact_profile(%{"profile" => profile}), do: profile

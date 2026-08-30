@@ -8,6 +8,7 @@ defmodule Letterpress.Renderer.ForTag do
   """
 
   alias Solid.{Argument, Variable}
+  alias Solid.Tags.ForTag, as: SolidForTag
 
   import Solid.NumberHelper, only: [to_integer: 1]
 
@@ -29,7 +30,7 @@ defmodule Letterpress.Renderer.ForTag do
   @doc false
   @impl true
   def parse("for", loc, context) do
-    case Solid.Tags.ForTag.parse("for", loc, context) do
+    case SolidForTag.parse("for", loc, context) do
       {:ok, tag, context} -> {:ok, struct!(__MODULE__, Map.from_struct(tag)), context}
       error -> error
     end
