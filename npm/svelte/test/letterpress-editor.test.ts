@@ -23,6 +23,8 @@ describe("LetterpressEditor", () => {
     expect(document.querySelector(".cm-content")?.getAttribute("aria-label")).toBe(
       "Template source",
     )
+    expect(document.querySelector(".cm-lineNumbers")).not.toBeNull()
+    expect(document.querySelector(".cm-foldGutter")).not.toBeNull()
     expect(onReady).toHaveBeenCalledOnce()
     await unmount(component)
     mounted.splice(0)
@@ -75,7 +77,7 @@ describe("LetterpressEditor", () => {
     )
     expect(onSave).toHaveBeenCalledWith("Hello  \n")
     editorView?.contentDOM.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "f", ctrlKey: true, shiftKey: true, bubbles: true }),
+      new KeyboardEvent("keydown", { key: "f", altKey: true, shiftKey: true, bubbles: true }),
     )
     await vi.waitFor(() => expect(onFormat).toHaveBeenCalledWith("Hello"))
     expect(editorView?.state.doc.toString()).toBe("Hello")
@@ -96,5 +98,25 @@ describe("LetterpressEditor", () => {
     await tick()
     expect(document.querySelector(".cm-content")?.getAttribute("contenteditable")).toBe("false")
     expect(document.activeElement).toBe(document.querySelector(".cm-content"))
+  })
+
+  it("supports host-configurable editor chrome and placeholder text", async () => {
+    const component = mount(LetterpressEditor, {
+      target: document.body,
+      props: {
+        source: "",
+        profile: "text/liquid@1",
+        schema,
+        lineNumbers: false,
+        folding: false,
+        lintGutter: false,
+        placeholder: "Write a notification",
+      },
+    })
+    mounted.push(component)
+    await tick()
+    expect(document.querySelector(".cm-lineNumbers")).toBeNull()
+    expect(document.querySelector(".cm-foldGutter")).toBeNull()
+    expect(document.querySelector(".cm-placeholder")?.textContent).toBe("Write a notification")
   })
 })

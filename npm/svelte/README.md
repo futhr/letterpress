@@ -3,7 +3,9 @@
 An unstyled Svelte 5 shell around CodeMirror and `@letterpress/language`. It
 owns editor lifecycle, controlled source updates, profile/schema/diagnostic
 reconfiguration, keyboard save/format commands, read-only state, focus, and
-accessibility. It does not call a backend or make publication decisions.
+accessibility. Standard line-number, folding, lint, matching, indentation,
+completion, search, wrapping, and placeholder behavior is configurable through
+props. It does not call a backend or make publication decisions.
 
 ```svelte
 <script lang="ts">

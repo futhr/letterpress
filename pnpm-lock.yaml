@@ -138,9 +138,21 @@ importers:
 
   npm/svelte:
     dependencies:
+      '@codemirror/autocomplete':
+        specifier: ^6.0.0
+        version: 6.20.3
       '@codemirror/commands':
         specifier: ^6.0.0
         version: 6.11.0
+      '@codemirror/language':
+        specifier: ^6.0.0
+        version: 6.12.4
+      '@codemirror/lint':
+        specifier: ^6.0.0
+        version: 6.9.7
+      '@codemirror/search':
+        specifier: ^6.0.0
+        version: 6.7.1
       '@codemirror/state':
         specifier: ^6.0.0
         version: 6.7.1

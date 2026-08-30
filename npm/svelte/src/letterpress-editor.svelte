@@ -13,6 +13,11 @@ export interface LetterpressEditorProps {
   theme?: Extension
   readOnly?: boolean
   autofocus?: boolean
+  lineNumbers?: boolean
+  folding?: boolean
+  lintGutter?: boolean
+  lineWrapping?: boolean
+  placeholder?: string
   ariaLabel?: string
   class?: string
   onChange?: (source: string) => void
@@ -23,9 +28,31 @@ export interface LetterpressEditorProps {
 </script>
 
 <script lang="ts">
+  import {
+    closeBrackets,
+    closeBracketsKeymap,
+    completionKeymap,
+  } from "@codemirror/autocomplete"
   import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands"
-  import { Compartment, EditorState } from "@codemirror/state"
-  import { EditorView, keymap } from "@codemirror/view"
+  import {
+    bracketMatching,
+    foldGutter,
+    foldKeymap,
+    indentOnInput,
+  } from "@codemirror/language"
+  import { lintGutter as codeLintGutter } from "@codemirror/lint"
+  import { search, searchKeymap } from "@codemirror/search"
+  import { Compartment, EditorState, Prec } from "@codemirror/state"
+  import {
+    drawSelection,
+    dropCursor,
+    EditorView,
+    highlightActiveLine,
+    highlightActiveLineGutter,
+    keymap,
+    lineNumbers as codeLineNumbers,
+    placeholder as editorPlaceholder,
+  } from "@codemirror/view"
   import { formatLetterpressSource, letterpressLanguage } from "@letterpress/language"
   import { onMount } from "svelte"
 
@@ -40,6 +67,11 @@ export interface LetterpressEditorProps {
     theme = [],
     readOnly = false,
     autofocus = false,
+    lineNumbers = true,
+    folding = true,
+    lintGutter = true,
+    lineWrapping = true,
+    placeholder,
     ariaLabel = "Template source",
     class: className = "",
     onChange,
@@ -55,6 +87,7 @@ export interface LetterpressEditorProps {
   const themeCompartment = new Compartment()
   const editableCompartment = new Compartment()
   const accessibilityCompartment = new Compartment()
+  const interfaceCompartment = new Compartment()
   const extraCompartment = new Compartment()
 
   function languageExtension(): Extension {
@@ -67,6 +100,16 @@ export interface LetterpressEditorProps {
     })
   }
 
+  function interfaceExtensions(): Extension {
+    return [
+      lineNumbers ? [codeLineNumbers(), highlightActiveLineGutter()] : [],
+      folding ? foldGutter() : [],
+      lintGutter ? codeLintGutter() : [],
+      lineWrapping ? EditorView.lineWrapping : [],
+      placeholder ? editorPlaceholder(placeholder) : [],
+    ]
+  }
+
   onMount(() => {
     view = new EditorView({
       parent: host,
@@ -74,28 +117,44 @@ export interface LetterpressEditorProps {
         doc: source,
         extensions: [
           history(),
+          drawSelection(),
+          dropCursor(),
+          indentOnInput(),
+          bracketMatching(),
+          closeBrackets(),
+          search(),
+          highlightActiveLine(),
+          Prec.high(
+            keymap.of([
+              {
+                key: "Mod-s",
+                preventDefault: true,
+                run: () => {
+                  void onSave?.(view?.state.doc.toString() ?? source)
+                  return true
+                },
+              },
+              {
+                key: "Shift-Alt-f",
+                preventDefault: true,
+                run: () => {
+                  void formatEditor()
+                  return true
+                },
+              },
+            ]),
+          ),
           keymap.of([
             ...defaultKeymap,
             ...historyKeymap,
+            ...closeBracketsKeymap,
+            ...completionKeymap,
+            ...foldKeymap,
+            ...searchKeymap,
             indentWithTab,
-            {
-              key: "Mod-s",
-              preventDefault: true,
-              run: () => {
-                void onSave?.(view?.state.doc.toString() ?? source)
-                return true
-              },
-            },
-            {
-              key: "Shift-Mod-f",
-              preventDefault: true,
-              run: () => {
-                void formatEditor()
-                return true
-              },
-            },
           ]),
           accessibilityCompartment.of(EditorView.contentAttributes.of({ "aria-label": ariaLabel })),
+          interfaceCompartment.of(interfaceExtensions()),
           EditorView.updateListener.of((update) => {
             if (!update.docChanged || applyingExternalSource) return
             source = update.state.doc.toString()
@@ -148,6 +207,11 @@ export interface LetterpressEditorProps {
         EditorView.contentAttributes.of({ "aria-label": ariaLabel }),
       ),
     })
+  })
+
+  $effect(() => {
+    if (!view) return
+    view.dispatch({ effects: interfaceCompartment.reconfigure(interfaceExtensions()) })
   })
 
   $effect(() => {

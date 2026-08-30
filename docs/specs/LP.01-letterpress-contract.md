@@ -315,8 +315,9 @@ Hand-maintained duplicate registries are forbidden.
 `@letterpress/svelte` provides an unstyled Svelte 5 component that creates and
 destroys CodeMirror safely, supports controlled source/schema/diagnostics,
 reconfigures theme and profile without recreating history, exposes save/change/
-format hooks, and meets keyboard/focus/accessibility expectations. It does not
-call a backend or decide UI layout.
+format hooks, and provides configurable line numbers, fold/lint gutters,
+matching, indentation, search, completion, line wrapping, and placeholders. It
+does not call a backend or decide UI layout.
 
 Both packages declare broad peer ranges for CodeMirror/Svelte and ship ESM,
 types, source maps, export maps, provenance-ready package metadata, and no

@@ -5,7 +5,7 @@ peer dependencies:
 
 ```bash
 pnpm add @letterpress/language
-pnpm add @letterpress/svelte svelte @codemirror/state @codemirror/view @codemirror/commands
+pnpm add @letterpress/svelte svelte @codemirror/autocomplete @codemirror/commands @codemirror/language @codemirror/lint @codemirror/search @codemirror/state @codemirror/view
 ```
 
 `@letterpress/language` combines CodeMirror's HTML, Liquid, and CSS parsers.
@@ -13,7 +13,9 @@ MJML tags and attributes come from the generated backend contract. It provides
 folding, matching, indentation, closing tags, snippets, typed variable
 completion, context-aware diagnostics, and deterministic formatting.
 
-The Svelte component owns CodeMirror lifecycle only. The host owns layout,
+The Svelte component owns CodeMirror lifecycle and standard editor behavior:
+line numbers, folding, lint markers, matching, indentation, completion, search,
+line wrapping, save/format keys, and controlled updates. The host owns layout,
 theme, persistence, backend calls, draft state, AI actions, and publication.
 Pass backend diagnostics together with the source hash and document version;
 the extension drops stale responses so an older validation request cannot
