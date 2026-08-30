@@ -147,12 +147,13 @@ importers:
       '@codemirror/view':
         specifier: ^6.0.0
         version: 6.43.9
-      '@letterpress/language':
-        specifier: workspace:^
-        version: link:../language
       svelte:
         specifier: ^5.0.0
         version: 5.57.0
+    devDependencies:
+      '@letterpress/language':
+        specifier: workspace:^
+        version: link:../language
 
 packages:
 
