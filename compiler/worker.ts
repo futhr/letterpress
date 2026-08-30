@@ -41,10 +41,17 @@ interface VariableUse {
   local: boolean
 }
 
+interface VariableDependency {
+  name: string
+  context: "none"
+  position: Position
+}
+
 interface Analysis {
   ast: AstNode
   diagnostics: Diagnostic[]
   variables: VariableUse[]
+  dependencies: VariableDependency[]
   tags: { name: string; position: Position; structural: boolean }[]
   translation_units: JsonObject[]
 }
@@ -457,7 +464,14 @@ function analyze(
     }) as unknown as AstNode
   } catch (error) {
     diagnostics.push(parserDiagnostic(source, sourceHash, documentVersion, error))
-    return { ast: {}, diagnostics, variables, tags, translation_units: translationUnits }
+    return {
+      ast: {},
+      diagnostics,
+      variables,
+      dependencies: [],
+      tags,
+      translation_units: translationUnits,
+    }
   }
 
   const profileData = (contract.profiles as JsonObject)[profile] as JsonObject | undefined
@@ -557,13 +571,14 @@ function analyze(
     }
   })
 
+  const dependencies = lookupDependencies(ast)
   const used = new Set(
     variables
       .filter((item) => !item.local)
       .map((item) => item.name)
       .filter(Boolean),
   )
-  for (const name of lookupVariables(ast)) used.add(name)
+  for (const dependency of dependencies) used.add(dependency.name)
   if (validateSchema) {
     const declared = flattenSchema(schema)
     for (const name of [...used].sort()) {
@@ -604,7 +619,7 @@ function analyze(
     }
   }
 
-  return { ast, diagnostics, variables, tags, translation_units: translationUnits }
+  return { ast, diagnostics, variables, dependencies, tags, translation_units: translationUnits }
 }
 
 function validateElement(
@@ -1037,12 +1052,14 @@ function prepareSubject(
 function publicAnalysis(analysis: Analysis): JsonObject {
   return {
     diagnostics: analysis.diagnostics,
-    variables: analysis.variables.map(({ name, context, position, filters }) => ({
+    variables: analysis.variables.map(({ name, context, position, filters, local }) => ({
       name,
       context,
       position,
       filters,
+      local,
     })),
+    dependencies: analysis.dependencies,
     translation_units: analysis.translation_units,
   }
 }
@@ -1105,8 +1122,8 @@ function walk(
   }
 }
 
-function lookupVariables(ast: AstNode): string[] {
-  const names = new Set<string>()
+function lookupDependencies(ast: AstNode): VariableDependency[] {
+  const dependencies = new Map<string, VariableDependency>()
   walk(ast, [], (node, ancestors) => {
     if (node.type === "VariableLookup") {
       const root = String(node.name ?? "")
@@ -1114,10 +1131,21 @@ function lookupVariables(ast: AstNode): string[] {
         ? node.lookups.map((item) => String((item as JsonObject).value ?? ""))
         : []
       const name = [root, ...lookups].filter(Boolean).join(".")
-      if (root && !localVariable(name, ancestors)) names.add(name)
+      const output = ancestors.some((ancestor) => ancestor.type === "LiquidVariableOutput")
+      if (root && !output && !localVariable(name, ancestors) && !dependencies.has(name)) {
+        dependencies.set(name, {
+          name,
+          context: "none",
+          position: node.position ?? { start: 0, end: 0 },
+        })
+      }
     }
   })
-  return [...names]
+  return [...dependencies.values()].sort((left, right) =>
+    left.position.start === right.position.start
+      ? left.name.localeCompare(right.name)
+      : left.position.start - right.position.start,
+  )
 }
 
 function localVariable(name: string, ancestors: AstNode[]): boolean {

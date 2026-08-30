@@ -70,6 +70,19 @@ defmodule Letterpress.CompilerTest do
     assert Enum.any?(diagnostics, &(&1.code == "LP_LIQUID_FILTER_FORBIDDEN"))
   end
 
+  test "discovers control-flow dependencies without treating loop locals as schema variables" do
+    source = "{% if enabled %}{% for item in items %}{{ item.name }}{% endfor %}{% endif %}"
+
+    assert {:ok, analysis, []} = Letterpress.discover("text/liquid@1", source)
+
+    assert Enum.map(analysis["dependencies"], &{&1["name"], &1["context"]}) == [
+             {"enabled", "none"},
+             {"items", "none"}
+           ]
+
+    assert [%{"name" => "item.name", "local" => true}] = analysis["variables"]
+  end
+
   test "reports forbidden elements, tags, filters, contexts, and undeclared variables" do
     cases = [
       {"<mjml><mj-body><mj-include path=\"x\" /></mj-body></mjml>", "LP_MJML_ELEMENT_FORBIDDEN"},

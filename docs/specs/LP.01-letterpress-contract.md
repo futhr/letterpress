@@ -116,11 +116,13 @@ The compiler reports discovered-but-undeclared and declared-but-unused
 variables separately. It never infers a security context from a variable name.
 
 `Letterpress.discover/3` is the schema-neutral migration and authoring seam. It
-returns parsed variable uses with their compiler-proven contexts while still
-enforcing profile grammar, source budgets, allowed MJML/HTML, Liquid tags, and
-filters. It does not infer types, phases, requiredness, or defaults and does
-not report undeclared/unused schema diagnostics. Consumers must build and
-review a schema, then call ordinary analysis or compilation before publication.
+returns parsed variable output uses with their compiler-proven contexts,
+control-flow dependencies with the neutral `none` context, and whether an
+output is scoped to a local loop binding. It still enforces profile grammar,
+source budgets, allowed MJML/HTML, Liquid tags, and filters. It does not infer
+types, phases, requiredness, or defaults and does not report undeclared/unused
+schema diagnostics. Consumers must build and review a schema, then call
+ordinary analysis or compilation before publication.
 
 ## 5. Compiler pipeline
 
