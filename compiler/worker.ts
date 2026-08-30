@@ -50,6 +50,8 @@ interface VariableDependency {
   context: "none"
   position: Position
   kind: "condition" | "collection" | "lookup"
+  local: boolean
+  binding?: VariableUse["binding"]
 }
 
 interface Analysis {
@@ -585,7 +587,7 @@ function analyze(
       .map((item) => item.name)
       .filter(Boolean),
   )
-  for (const dependency of dependencies) used.add(dependency.name)
+  for (const dependency of dependencies) if (!dependency.local) used.add(dependency.name)
   if (validateSchema) {
     const declared = flattenSchema(schema)
     for (const name of [...used].sort()) {
@@ -1140,12 +1142,15 @@ function lookupDependencies(ast: AstNode): VariableDependency[] {
         : []
       const name = [root, ...lookups].filter(Boolean).join(".")
       const output = ancestors.some((ancestor) => ancestor.type === "LiquidVariableOutput")
-      if (root && !output && !localVariable(name, ancestors) && !dependencies.has(name)) {
+      const binding = localBinding(name, ancestors)
+      if (root && !output && !liquidInternalVariable(name, ancestors) && !dependencies.has(name)) {
         dependencies.set(name, {
           name,
           context: "none",
           position: node.position ?? { start: 0, end: 0 },
           kind: dependencyKind(node, ancestors),
+          local: binding !== undefined,
+          ...(binding === undefined ? {} : { binding }),
         })
       }
     }
@@ -1201,16 +1206,14 @@ function localBinding(name: string, ancestors: AstNode[]): VariableUse["binding"
 }
 
 function localVariable(name: string, ancestors: AstNode[]): boolean {
-  const root = name.split(".")[0]
+  return liquidInternalVariable(name, ancestors) || localBinding(name, ancestors) !== undefined
+}
 
-  if (
-    root === "continue" &&
+function liquidInternalVariable(name: string, ancestors: AstNode[]): boolean {
+  return (
+    name.split(".")[0] === "continue" &&
     ancestors.some((ancestor) => ancestor.type === "NamedArgument" && ancestor.name === "offset")
-  ) {
-    return true
-  }
-
-  return localBinding(name, ancestors) !== undefined
+  )
 }
 
 function childrenOf(node: AstNode): AstNode[] {

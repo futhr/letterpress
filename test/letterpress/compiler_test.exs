@@ -80,6 +80,8 @@ defmodule Letterpress.CompilerTest do
              {"items", "none", "collection"}
            ]
 
+    assert Enum.all?(analysis["dependencies"], &(&1["local"] == false))
+
     assert [
              %{
                "name" => "item.name",
@@ -87,6 +89,47 @@ defmodule Letterpress.CompilerTest do
                "binding" => %{"name" => "item", "collection" => "items"}
              }
            ] = analysis["variables"]
+  end
+
+  test "discovers nested loop collections as scoped dependencies" do
+    source =
+      "{% for user in users %}{{ user.name }}{% for order in user.orders %}{{ order.id }}{% endfor %}{% endfor %}"
+
+    assert {:ok, analysis, []} = Letterpress.discover("text/liquid@1", source)
+
+    assert [
+             %{"name" => "users", "kind" => "collection", "local" => false},
+             %{
+               "name" => "user.orders",
+               "kind" => "collection",
+               "local" => true,
+               "binding" => %{"name" => "user", "collection" => "users"}
+             }
+           ] = analysis["dependencies"]
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "users" => %{
+          "type" => "list",
+          "items" => %{
+            "type" => "object",
+            "properties" => %{
+              "name" => %{"type" => "string"},
+              "orders" => %{
+                "type" => "list",
+                "items" => %{
+                  "type" => "object",
+                  "properties" => %{"id" => %{"type" => "string"}}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    assert {:ok, _, []} = Letterpress.compile("text/liquid@1", source, schema)
   end
 
   test "reports forbidden elements, tags, filters, contexts, and undeclared variables" do
