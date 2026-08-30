@@ -1,4 +1,4 @@
-import { mkdir, copyFile } from "node:fs/promises"
+import { copyFile, mkdir } from "node:fs/promises"
 import { build } from "esbuild"
 
 await import("./generate-contract.mjs")

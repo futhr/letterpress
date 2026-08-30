@@ -129,6 +129,9 @@ importers:
       '@codemirror/view':
         specifier: ^6.0.0
         version: 6.43.9
+      '@shopify/liquid-html-parser':
+        specifier: 2.10.0
+        version: 2.10.0
       '@shopify/prettier-plugin-liquid':
         specifier: 1.11.0
         version: 1.11.0(prettier@3.9.6)

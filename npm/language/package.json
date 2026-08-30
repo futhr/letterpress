@@ -1,0 +1,58 @@
+{
+  "name": "@letterpress/language",
+  "version": "0.1.0",
+  "description": "CodeMirror language services for Letterpress notification templates.",
+  "license": "MIT",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contract": {
+      "types": "./dist/generated/contract.d.ts",
+      "import": "./dist/generated/contract.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "node ../../scripts/clean-package.mjs dist && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage",
+    "check:publish": "publint && attw --pack . --profile esm-only -q"
+  },
+  "peerDependencies": {
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/lang-css": "^6.0.0",
+    "@codemirror/lang-html": "^6.0.0",
+    "@codemirror/lang-liquid": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "@shopify/liquid-html-parser": "2.10.0",
+    "@shopify/prettier-plugin-liquid": "1.11.0"
+  },
+  "homepage": "https://github.com/futhr/letterpress",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/futhr/letterpress.git",
+    "directory": "npm/language"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@letterpress/language": ["../language/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.svelte", "src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}

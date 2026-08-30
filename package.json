@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.23.0",
-  "engines": {"node": ">=22.0.0", "pnpm": ">=10.0.0"},
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
   "scripts": {
     "build": "pnpm build:compiler && pnpm -r build",
     "build:compiler": "node scripts/build-compiler.mjs",

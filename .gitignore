@@ -7,7 +7,7 @@
 *.ez
 erl_crash.dump
 
-/node_modules/
+**/node_modules/
 /npm/*/dist/
 /npm/*/coverage/
 /npm/*/.svelte-kit/
