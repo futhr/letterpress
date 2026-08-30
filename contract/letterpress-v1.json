@@ -1,0 +1,105 @@
+{
+  "contract_version": 1,
+  "artifact_version": 1,
+  "diagnostic_version": 1,
+  "schema_version": 1,
+  "profiles": {
+    "email/mjml-liquid@1": {
+      "kind": "email",
+      "language": "mjml-liquid",
+      "compiler": "mjml@5.4.0",
+      "root": "mjml",
+      "elements": [
+        "mjml", "mj-head", "mj-body", "mj-attributes", "mj-all", "mj-class",
+        "mj-breakpoint", "mj-font", "mj-preview", "mj-style", "mj-title",
+        "mj-html-attributes", "mj-selector", "mj-html-attribute",
+        "mj-wrapper", "mj-section", "mj-group", "mj-column", "mj-text",
+        "mj-button", "mj-image", "mj-divider", "mj-spacer", "mj-table",
+        "mj-social", "mj-social-element", "mj-navbar", "mj-navbar-link",
+        "mj-hero", "mj-raw", "mj-accordion", "mj-accordion-element",
+        "mj-accordion-title", "mj-accordion-text", "mj-carousel",
+        "mj-carousel-image"
+      ],
+      "forbidden_elements": ["mj-include"],
+      "url_attributes": ["href", "src", "background-url", "action"],
+      "color_attributes": ["color", "background-color", "border-color"],
+      "text_elements": ["mj-text", "mj-button", "mj-title", "mj-preview", "mj-navbar-link", "mj-accordion-title", "mj-accordion-text"],
+      "structural_elements": ["mj-body", "mj-wrapper", "mj-section", "mj-group", "mj-column"],
+      "common_attributes": [
+        "css-class", "mj-class", "padding", "padding-top", "padding-right",
+        "padding-bottom", "padding-left", "background-color", "color",
+        "font-family", "font-size", "font-style", "font-weight", "line-height",
+        "letter-spacing", "text-align", "text-decoration", "text-transform",
+        "align", "vertical-align", "width", "height", "border", "border-radius",
+        "border-color", "border-width", "href", "src", "alt", "title", "target"
+      ]
+    },
+    "text/liquid@1": {
+      "kind": "text",
+      "language": "liquid",
+      "root": null,
+      "elements": [],
+      "forbidden_elements": []
+    }
+  },
+  "liquid": {
+    "tags": ["if", "unless", "for", "case", "comment", "break", "continue"],
+    "filters": [
+      "abs", "append", "at_least", "at_most", "capitalize", "ceil", "compact",
+      "concat", "date", "default", "divided_by", "downcase", "first", "floor",
+      "join", "last", "lstrip", "map",
+      "minus", "modulo", "newline_to_br", "plus", "prepend", "remove",
+      "remove_first", "replace", "replace_first", "reverse", "round", "rstrip",
+      "size", "slice", "sort", "sort_natural", "split", "strip", "strip_html",
+      "strip_newlines", "times", "truncate", "truncatewords", "uniq", "upcase",
+      "url_decode", "url_encode", "where"
+    ],
+    "reserved_filters": ["letterpress_escape"]
+  },
+  "contexts": ["text", "html_text", "html_attribute", "url", "color", "css", "subject", "none"],
+  "phases": ["compile", "delivery"],
+  "types": ["string", "integer", "number", "boolean", "date", "datetime", "url", "email", "phone", "object", "list"],
+  "snippets": {
+    "email": [
+      {"label": "email document", "template": "<mjml>\n  <mj-head>\n    <mj-preview>${1:Preview}</mj-preview>\n  </mj-head>\n  <mj-body>\n    <mj-section>\n      <mj-column>\n        <mj-text>${2:Content}</mj-text>\n      </mj-column>\n    </mj-section>\n  </mj-body>\n</mjml>"},
+      {"label": "conditional section", "template": "{% if ${1:condition} %}\n  <mj-section>\n    <mj-column>\n      <mj-text>${2:Content}</mj-text>\n    </mj-column>\n  </mj-section>\n{% endif %}"}
+    ],
+    "text": [
+      {"label": "conditional text", "template": "{% if ${1:condition} %}${2:Text}{% endif %}"},
+      {"label": "variable", "template": "{{ ${1:variable} }}"}
+    ]
+  },
+  "diagnostic_codes": [
+    "LP_ARTIFACT_INVALID", "LP_ARTIFACT_LIQUID", "LP_COMPILE_VALUE_INVALID",
+    "LP_COMPILE_VALUE_MISSING", "LP_COMPILER_DISABLED", "LP_COMPILER_TIMEOUT",
+    "LP_COMPILER_UNAVAILABLE", "LP_INPUT_INVALID", "LP_INTERNAL_BOUNDARY",
+    "LP_LIQUID_FILTER_FORBIDDEN",
+    "LP_LIQUID_TAG_FORBIDDEN", "LP_MJML_ATTRIBUTE_FORBIDDEN", "LP_MJML_BODY",
+    "LP_MJML_COMPILE", "LP_MJML_ELEMENT_FORBIDDEN", "LP_MJML_INVALID_CHILD",
+    "LP_MJML_ROOT", "LP_MJML_UNKNOWN_ELEMENT", "LP_OPTIONS_INVALID", "LP_PROFILE_INVALID",
+    "LP_PROFILE_UNKNOWN",
+    "LP_RENDER_INPUT_DEPTH", "LP_RENDER_INPUT_ITEMS", "LP_RENDER_INPUT_KEYS",
+    "LP_RENDER_INPUT_SCALAR", "LP_RENDER_INVALID", "LP_RENDER_LIQUID",
+    "LP_RENDER_LOOP_LIMIT", "LP_RENDER_OUTPUT_LIMIT", "LP_RENDER_RESOURCE_LIMIT", "LP_RENDER_TIMEOUT",
+    "LP_RENDER_VALUE_INVALID", "LP_RENDER_VALUE_MISSING", "LP_RENDER_VALUE_UNKNOWN",
+    "LP_SCHEMA_CONTEXT_MISMATCH",
+    "LP_SCHEMA_DEFAULT", "LP_SCHEMA_DEFINITION", "LP_SCHEMA_DEPTH", "LP_SCHEMA_DESCRIPTION",
+    "LP_SCHEMA_FIELD", "LP_SCHEMA_INVALID", "LP_SCHEMA_NAME", "LP_SCHEMA_PHASE",
+    "LP_SCHEMA_PHASE_CONTEXT", "LP_SCHEMA_PHASE_MISMATCH", "LP_SCHEMA_PROPERTIES",
+    "LP_SCHEMA_REQUIRED", "LP_SCHEMA_RESERVED", "LP_SCHEMA_SENSITIVE", "LP_SCHEMA_TOO_LARGE",
+    "LP_SCHEMA_SHAPE", "LP_SCHEMA_TYPE", "LP_SCHEMA_UNDECLARED_VARIABLE", "LP_SCHEMA_UNUSED_VARIABLE",
+    "LP_SCHEMA_VARIABLES", "LP_SCHEMA_VERSION", "LP_SENTINEL_COLLISION",
+    "LP_SENTINEL_SURVIVAL", "LP_SOURCE_INVALID", "LP_SOURCE_NUL", "LP_SOURCE_TOO_LARGE",
+    "LP_TRANSLATION_MISSING", "LP_TRANSLATION_PLACEHOLDER"
+  ],
+  "limits": {
+    "source_bytes": 500000,
+    "schema_variables": 500,
+    "input_depth": 12,
+    "input_keys": 2000,
+    "scalar_bytes": 100000,
+    "collection_items": 1000,
+    "loop_iterations": 10000,
+    "output_bytes": 1000000
+  }
+}

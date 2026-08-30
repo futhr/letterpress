@@ -1,0 +1,1171 @@
+{
+  "contract_version": 1,
+  "artifact_version": 1,
+  "diagnostic_version": 1,
+  "schema_version": 1,
+  "profiles": {
+    "email/mjml-liquid@1": {
+      "kind": "email",
+      "language": "mjml-liquid",
+      "compiler": "mjml@5.4.0",
+      "root": "mjml",
+      "elements": [
+        "mjml",
+        "mj-head",
+        "mj-body",
+        "mj-attributes",
+        "mj-all",
+        "mj-class",
+        "mj-breakpoint",
+        "mj-font",
+        "mj-preview",
+        "mj-style",
+        "mj-title",
+        "mj-html-attributes",
+        "mj-selector",
+        "mj-html-attribute",
+        "mj-wrapper",
+        "mj-section",
+        "mj-group",
+        "mj-column",
+        "mj-text",
+        "mj-button",
+        "mj-image",
+        "mj-divider",
+        "mj-spacer",
+        "mj-table",
+        "mj-social",
+        "mj-social-element",
+        "mj-navbar",
+        "mj-navbar-link",
+        "mj-hero",
+        "mj-raw",
+        "mj-accordion",
+        "mj-accordion-element",
+        "mj-accordion-title",
+        "mj-accordion-text",
+        "mj-carousel",
+        "mj-carousel-image"
+      ],
+      "forbidden_elements": [
+        "mj-include"
+      ],
+      "url_attributes": [
+        "href",
+        "src",
+        "background-url",
+        "action"
+      ],
+      "color_attributes": [
+        "color",
+        "background-color",
+        "border-color"
+      ],
+      "text_elements": [
+        "mj-text",
+        "mj-button",
+        "mj-title",
+        "mj-preview",
+        "mj-navbar-link",
+        "mj-accordion-title",
+        "mj-accordion-text"
+      ],
+      "structural_elements": [
+        "mj-body",
+        "mj-wrapper",
+        "mj-section",
+        "mj-group",
+        "mj-column"
+      ],
+      "common_attributes": [
+        "css-class",
+        "mj-class",
+        "padding",
+        "padding-top",
+        "padding-right",
+        "padding-bottom",
+        "padding-left",
+        "background-color",
+        "color",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "line-height",
+        "letter-spacing",
+        "text-align",
+        "text-decoration",
+        "text-transform",
+        "align",
+        "vertical-align",
+        "width",
+        "height",
+        "border",
+        "border-radius",
+        "border-color",
+        "border-width",
+        "href",
+        "src",
+        "alt",
+        "title",
+        "target"
+      ],
+      "element_metadata": {
+        "mj-accordion": {
+          "attributes": {
+            "border": "string",
+            "container-background-color": "color",
+            "font-family": "string",
+            "icon-align": "enum(top,middle,bottom)",
+            "icon-height": "unit(px,%)",
+            "icon-position": "enum(left,right)",
+            "icon-unwrapped-alt": "string",
+            "icon-unwrapped-url": "string",
+            "icon-width": "unit(px,%)",
+            "icon-wrapped-alt": "string",
+            "icon-wrapped-url": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)"
+          },
+          "defaults": {
+            "border": "2px solid black",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "icon-align": "middle",
+            "icon-height": "32px",
+            "icon-position": "right",
+            "icon-unwrapped-alt": "-",
+            "icon-unwrapped-url": "https://i.imgur.com/w4uTygT.png",
+            "icon-width": "32px",
+            "icon-wrapped-alt": "+",
+            "icon-wrapped-url": "https://i.imgur.com/bIXv1bk.png",
+            "padding": "10px 25px"
+          },
+          "ending_tag": false
+        },
+        "mj-accordion-element": {
+          "attributes": {
+            "background-color": "color",
+            "border": "string",
+            "font-family": "string",
+            "icon-align": "enum(top,middle,bottom)",
+            "icon-height": "unit(px,%)",
+            "icon-position": "enum(left,right)",
+            "icon-unwrapped-alt": "string",
+            "icon-unwrapped-url": "string",
+            "icon-width": "unit(px,%)",
+            "icon-wrapped-alt": "string",
+            "icon-wrapped-url": "string"
+          },
+          "defaults": {
+            "title": {
+              "img": {
+                "width": "32px",
+                "height": "32px"
+              }
+            }
+          },
+          "ending_tag": false
+        },
+        "mj-accordion-text": {
+          "attributes": {
+            "background-color": "color",
+            "color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-weight": "string",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)"
+          },
+          "defaults": {
+            "font-size": "13px",
+            "line-height": "1",
+            "padding": "16px"
+          },
+          "ending_tag": true
+        },
+        "mj-accordion-title": {
+          "attributes": {
+            "background-color": "color",
+            "color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-weight": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)"
+          },
+          "defaults": {
+            "font-size": "13px",
+            "padding": "16px"
+          },
+          "ending_tag": true
+        },
+        "mj-attributes": {
+          "attributes": {},
+          "defaults": {},
+          "ending_tag": false
+        },
+        "mj-body": {
+          "attributes": {
+            "background-color": "color",
+            "id": "string",
+            "width": "unit(px)"
+          },
+          "defaults": {
+            "width": "600px"
+          },
+          "ending_tag": false
+        },
+        "mj-breakpoint": {
+          "attributes": {
+            "width": "unit(px)"
+          },
+          "defaults": {},
+          "ending_tag": true
+        },
+        "mj-button": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "background-color": "color",
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "color": "color",
+            "container-background-color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "height": "unit(px,%)",
+            "href": "string",
+            "inner-padding": "unit(px,%){1,4}",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "rel": "string",
+            "target": "string",
+            "text-align": "enum(left,right,center)",
+            "text-decoration": "string",
+            "text-transform": "string",
+            "title": "string",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%)"
+          },
+          "defaults": {
+            "align": "center",
+            "background-color": "#414141",
+            "border": "none",
+            "border-radius": "3px",
+            "color": "#ffffff",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "font-weight": "normal",
+            "inner-padding": "10px 25px",
+            "line-height": "120%",
+            "padding": "10px 25px",
+            "target": "_blank",
+            "text-decoration": "none",
+            "text-transform": "none",
+            "vertical-align": "middle"
+          },
+          "ending_tag": true
+        },
+        "mj-carousel": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "border-radius": "string",
+            "container-background-color": "color",
+            "icon-width": "unit(px,%)",
+            "left-icon": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "right-icon": "string",
+            "tb-border": "string",
+            "tb-border-radius": "string",
+            "tb-hover-border-color": "color",
+            "tb-selected-border-color": "color",
+            "tb-width": "unit(px,%)",
+            "thumbnails": "enum(visible,hidden,supported)"
+          },
+          "defaults": {
+            "align": "center",
+            "border-radius": "6px",
+            "icon-width": "44px",
+            "left-icon": "https://i.imgur.com/xTh3hln.png",
+            "right-icon": "https://i.imgur.com/os7o9kz.png",
+            "tb-border": "2px solid transparent",
+            "tb-border-radius": "6px",
+            "tb-hover-border-color": "#fead0d",
+            "tb-selected-border-color": "#ccc",
+            "thumbnails": "visible"
+          },
+          "ending_tag": false
+        },
+        "mj-carousel-image": {
+          "attributes": {
+            "alt": "string",
+            "border-radius": "string",
+            "href": "string",
+            "rel": "string",
+            "src": "string",
+            "target": "string",
+            "tb-border": "string",
+            "tb-border-radius": "string",
+            "thumbnails-src": "string",
+            "title": "string"
+          },
+          "defaults": {
+            "alt": "",
+            "target": "_blank"
+          },
+          "ending_tag": true
+        },
+        "mj-column": {
+          "attributes": {
+            "background-color": "color",
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "direction": "enum(ltr,rtl)",
+            "inner-background-color": "color",
+            "inner-border": "string",
+            "inner-border-bottom": "string",
+            "inner-border-left": "string",
+            "inner-border-radius": "string",
+            "inner-border-right": "string",
+            "inner-border-top": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%)"
+          },
+          "defaults": {
+            "direction": "ltr",
+            "vertical-align": "top"
+          },
+          "ending_tag": false
+        },
+        "mj-divider": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "border-color": "color",
+            "border-style": "string",
+            "border-width": "unit(px)",
+            "container-background-color": "color",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "width": "unit(px,%)"
+          },
+          "defaults": {
+            "align": "center",
+            "border-color": "#000000",
+            "border-style": "solid",
+            "border-width": "4px",
+            "padding": "10px 25px",
+            "width": "100%"
+          },
+          "ending_tag": false
+        },
+        "mj-font": {
+          "attributes": {
+            "href": "string",
+            "name": "string"
+          },
+          "defaults": {},
+          "ending_tag": false
+        },
+        "mj-group": {
+          "attributes": {
+            "background-color": "color",
+            "direction": "enum(ltr,rtl)",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%)"
+          },
+          "defaults": {
+            "direction": "ltr"
+          },
+          "ending_tag": false
+        },
+        "mj-head": {
+          "attributes": {},
+          "defaults": {},
+          "ending_tag": false
+        },
+        "mj-hero": {
+          "attributes": {
+            "background-color": "color",
+            "background-height": "unit(px,%)",
+            "background-position": "string",
+            "background-url": "string",
+            "background-width": "unit(px,%)",
+            "border-radius": "string",
+            "height": "unit(px,%)",
+            "inner-background-color": "color",
+            "inner-padding": "unit(px,%){1,4}",
+            "inner-padding-bottom": "unit(px,%)",
+            "inner-padding-left": "unit(px,%)",
+            "inner-padding-right": "unit(px,%)",
+            "inner-padding-top": "unit(px,%)",
+            "mode": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "vertical-align": "enum(top,bottom,middle)"
+          },
+          "defaults": {
+            "background-color": "#ffffff",
+            "background-position": "center center",
+            "background-url": null,
+            "height": "0px",
+            "mode": "fixed-height",
+            "padding": "0px",
+            "padding-bottom": null,
+            "padding-left": null,
+            "padding-right": null,
+            "padding-top": null,
+            "vertical-align": "top"
+          },
+          "ending_tag": false
+        },
+        "mj-html-attributes": {
+          "attributes": {},
+          "defaults": {},
+          "ending_tag": false
+        },
+        "mj-image": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "alt": "string",
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "container-background-color": "color",
+            "fluid-on-mobile": "boolean",
+            "font-size": "unit(px)",
+            "height": "unit(px,auto)",
+            "href": "string",
+            "max-height": "unit(px,%)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "rel": "string",
+            "sizes": "string",
+            "src": "string",
+            "srcset": "string",
+            "target": "string",
+            "title": "string",
+            "usemap": "string",
+            "width": "unit(px)"
+          },
+          "defaults": {
+            "align": "center",
+            "alt": "",
+            "border": "0",
+            "font-size": "13px",
+            "height": "auto",
+            "padding": "10px 25px",
+            "target": "_blank"
+          },
+          "ending_tag": false
+        },
+        "mj-navbar": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "base-url": "string",
+            "hamburger": "string",
+            "ico-align": "enum(left,center,right)",
+            "ico-close": "string",
+            "ico-color": "color",
+            "ico-font-family": "string",
+            "ico-font-size": "unit(px,%)",
+            "ico-line-height": "unit(px,%,)",
+            "ico-open": "string",
+            "ico-padding": "unit(px,%){1,4}",
+            "ico-padding-bottom": "unit(px,%)",
+            "ico-padding-left": "unit(px,%)",
+            "ico-padding-right": "unit(px,%)",
+            "ico-padding-top": "unit(px,%)",
+            "ico-text-decoration": "string",
+            "ico-text-transform": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)"
+          },
+          "defaults": {
+            "align": "center",
+            "base-url": null,
+            "hamburger": null,
+            "ico-align": "center",
+            "ico-close": "&#8855;",
+            "ico-color": "#000000",
+            "ico-font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "ico-font-size": "30px",
+            "ico-line-height": "30px",
+            "ico-open": "&#9776;",
+            "ico-padding": "10px",
+            "ico-text-decoration": "none",
+            "ico-text-transform": "uppercase"
+          },
+          "ending_tag": false
+        },
+        "mj-navbar-link": {
+          "attributes": {
+            "color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "href": "string",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "rel": "string",
+            "target": "string",
+            "text-decoration": "string",
+            "text-transform": "string"
+          },
+          "defaults": {
+            "color": "#000000",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "font-weight": "normal",
+            "line-height": "22px",
+            "padding": "15px 10px",
+            "target": "_blank",
+            "text-decoration": "none",
+            "text-transform": "uppercase"
+          },
+          "ending_tag": true
+        },
+        "mj-preview": {
+          "attributes": {},
+          "defaults": {},
+          "ending_tag": true
+        },
+        "mj-raw": {
+          "attributes": {
+            "position": "enum(file-start)"
+          },
+          "defaults": {},
+          "ending_tag": true
+        },
+        "mj-section": {
+          "attributes": {
+            "background-color": "color",
+            "background-position": "string",
+            "background-position-x": "string",
+            "background-position-y": "string",
+            "background-repeat": "enum(repeat,no-repeat)",
+            "background-size": "string",
+            "background-url": "string",
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "direction": "enum(ltr,rtl)",
+            "full-width": "enum(full-width,false,)",
+            "gutter": "unit(px,%)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "text-align": "enum(left,center,right)",
+            "text-padding": "unit(px,%){1,4}"
+          },
+          "defaults": {
+            "background-position": "top center",
+            "background-repeat": "repeat",
+            "background-size": "auto",
+            "direction": "ltr",
+            "padding": "20px 0",
+            "text-align": "center",
+            "text-padding": "4px 4px 4px 0"
+          },
+          "ending_tag": false
+        },
+        "mj-social": {
+          "attributes": {
+            "align": "enum(left,right,center)",
+            "border": "string",
+            "border-radius": "string",
+            "color": "color",
+            "container-background-color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "icon-height": "unit(px,%)",
+            "icon-padding": "unit(px,%){1,4}",
+            "icon-size": "unit(px,%)",
+            "inner-padding": "unit(px,%){1,4}",
+            "line-height": "unit(px,%,)",
+            "mode": "enum(horizontal,vertical)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "table-layout": "enum(auto,fixed)",
+            "text-decoration": "string",
+            "text-padding": "unit(px,%){1,4}",
+            "vertical-align": "enum(top,bottom,middle)"
+          },
+          "defaults": {
+            "align": "center",
+            "border-radius": "3px",
+            "color": "#333333",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "icon-size": "20px",
+            "inner-padding": null,
+            "line-height": "22px",
+            "mode": "horizontal",
+            "padding": "10px 25px",
+            "text-decoration": "none"
+          },
+          "ending_tag": false
+        },
+        "mj-social-element": {
+          "attributes": {
+            "align": "enum(left,center,right)",
+            "alt": "string",
+            "background-color": "color",
+            "border": "string",
+            "border-radius": "string",
+            "color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "href": "string",
+            "icon-height": "unit(px,%)",
+            "icon-padding": "unit(px,%){1,4}",
+            "icon-position": "enum(left,right)",
+            "icon-size": "unit(px,%)",
+            "line-height": "unit(px,%,)",
+            "name": "string",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "rel": "string",
+            "sizes": "string",
+            "src": "string",
+            "srcset": "string",
+            "target": "string",
+            "text-decoration": "string",
+            "text-padding": "unit(px,%){1,4}",
+            "title": "string",
+            "vertical-align": "enum(top,middle,bottom)"
+          },
+          "defaults": {
+            "align": "left",
+            "alt": "",
+            "border": "0",
+            "border-radius": "3px",
+            "color": "#000",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "icon-position": "left",
+            "line-height": "1",
+            "padding": "4px",
+            "target": "_blank",
+            "text-decoration": "none",
+            "text-padding": "4px 4px 4px 0",
+            "vertical-align": "middle"
+          },
+          "ending_tag": true
+        },
+        "mj-spacer": {
+          "attributes": {
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "container-background-color": "color",
+            "height": "unit(px,%)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)"
+          },
+          "defaults": {
+            "height": "20px"
+          },
+          "ending_tag": false
+        },
+        "mj-style": {
+          "attributes": {
+            "inline": "string"
+          },
+          "defaults": {},
+          "ending_tag": true
+        },
+        "mj-table": {
+          "attributes": {
+            "align": "enum(left,right,center)",
+            "border": "string",
+            "cellpadding": "integer",
+            "cellspacing": "integer",
+            "color": "color",
+            "container-background-color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-weight": "string",
+            "line-height": "unit(px,%,)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "role": "enum(none,presentation)",
+            "table-layout": "enum(auto,fixed,initial,inherit)",
+            "vertical-align": "enum(top,bottom,middle)",
+            "width": "unit(px,%,auto)"
+          },
+          "defaults": {
+            "align": "left",
+            "border": "none",
+            "cellpadding": "0",
+            "cellspacing": "0",
+            "color": "#000000",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "line-height": "22px",
+            "padding": "10px 25px",
+            "table-layout": "auto",
+            "width": "100%"
+          },
+          "ending_tag": true
+        },
+        "mj-text": {
+          "attributes": {
+            "align": "enum(left,right,center,justify)",
+            "background-color": "color",
+            "color": "color",
+            "container-background-color": "color",
+            "font-family": "string",
+            "font-size": "unit(px)",
+            "font-style": "string",
+            "font-weight": "string",
+            "height": "unit(px,%)",
+            "letter-spacing": "unitWithNegative(px,em)",
+            "line-height": "unit(px,%,)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "text-decoration": "string",
+            "text-transform": "string",
+            "vertical-align": "enum(top,bottom,middle)"
+          },
+          "defaults": {
+            "align": "left",
+            "color": "#000000",
+            "font-family": "Ubuntu, Helvetica, Arial, sans-serif",
+            "font-size": "13px",
+            "line-height": "1",
+            "padding": "10px 25px"
+          },
+          "ending_tag": true
+        },
+        "mj-title": {
+          "attributes": {},
+          "defaults": {},
+          "ending_tag": true
+        },
+        "mj-wrapper": {
+          "attributes": {
+            "background-color": "color",
+            "background-position": "string",
+            "background-position-x": "string",
+            "background-position-y": "string",
+            "background-repeat": "enum(repeat,no-repeat)",
+            "background-size": "string",
+            "background-url": "string",
+            "border": "string",
+            "border-bottom": "string",
+            "border-left": "string",
+            "border-radius": "string",
+            "border-right": "string",
+            "border-top": "string",
+            "direction": "enum(ltr,rtl)",
+            "full-width": "enum(full-width,false,)",
+            "gap": "unit(px)",
+            "gutter": "unit(px,%)",
+            "padding": "unit(px,%){1,4}",
+            "padding-bottom": "unit(px,%)",
+            "padding-left": "unit(px,%)",
+            "padding-right": "unit(px,%)",
+            "padding-top": "unit(px,%)",
+            "text-align": "enum(left,center,right)",
+            "text-padding": "unit(px,%){1,4}"
+          },
+          "defaults": {
+            "background-position": "top center",
+            "background-repeat": "repeat",
+            "background-size": "auto",
+            "direction": "ltr",
+            "padding": "20px 0",
+            "text-align": "center",
+            "text-padding": "4px 4px 4px 0"
+          },
+          "ending_tag": false
+        }
+      },
+      "nesting": {
+        "mj-accordion": [
+          "mj-accordion-element",
+          "mj-raw"
+        ],
+        "mj-accordion-element": [
+          "mj-accordion-text",
+          "mj-accordion-title",
+          "mj-raw"
+        ],
+        "mj-accordion-text": [],
+        "mj-accordion-title": [],
+        "mj-attributes": [
+          "*"
+        ],
+        "mj-body": [
+          "mj-hero",
+          "mj-raw",
+          "mj-section",
+          "mj-wrapper"
+        ],
+        "mj-button": [],
+        "mj-carousel": [
+          "mj-carousel-image"
+        ],
+        "mj-carousel-image": [],
+        "mj-column": [
+          "mj-accordion",
+          "mj-button",
+          "mj-carousel",
+          "mj-divider",
+          "mj-image",
+          "mj-navbar",
+          "mj-raw",
+          "mj-social",
+          "mj-spacer",
+          "mj-table",
+          "mj-text"
+        ],
+        "mj-divider": [],
+        "mj-group": [
+          "mj-column",
+          "mj-raw"
+        ],
+        "mj-head": [
+          "mj-attributes",
+          "mj-breakpoint",
+          "mj-font",
+          "mj-html-attributes",
+          "mj-preview",
+          "mj-raw",
+          "mj-style",
+          "mj-title"
+        ],
+        "mj-hero": [
+          "mj-accordion",
+          "mj-button",
+          "mj-carousel",
+          "mj-divider",
+          "mj-image",
+          "mj-navbar",
+          "mj-raw",
+          "mj-social",
+          "mj-spacer",
+          "mj-table",
+          "mj-text"
+        ],
+        "mj-html-attribute": [],
+        "mj-html-attributes": [
+          "mj-selector"
+        ],
+        "mj-image": [],
+        "mj-navbar": [
+          "mj-navbar-link",
+          "mj-raw"
+        ],
+        "mj-raw": [],
+        "mj-section": [
+          "mj-column",
+          "mj-group",
+          "mj-raw"
+        ],
+        "mj-selector": [
+          "mj-html-attribute"
+        ],
+        "mj-social": [
+          "mj-raw",
+          "mj-social-element"
+        ],
+        "mj-social-element": [],
+        "mj-spacer": [],
+        "mj-table": [],
+        "mj-text": [],
+        "mj-wrapper": [
+          "mj-hero",
+          "mj-raw",
+          "mj-section"
+        ],
+        "mjml": [
+          "mj-body",
+          "mj-head",
+          "mj-raw"
+        ]
+      }
+    },
+    "text/liquid@1": {
+      "kind": "text",
+      "language": "liquid",
+      "root": null,
+      "elements": [],
+      "forbidden_elements": []
+    }
+  },
+  "liquid": {
+    "tags": [
+      "if",
+      "unless",
+      "for",
+      "case",
+      "comment",
+      "break",
+      "continue"
+    ],
+    "filters": [
+      "abs",
+      "append",
+      "at_least",
+      "at_most",
+      "capitalize",
+      "ceil",
+      "compact",
+      "concat",
+      "date",
+      "default",
+      "divided_by",
+      "downcase",
+      "first",
+      "floor",
+      "join",
+      "last",
+      "lstrip",
+      "map",
+      "minus",
+      "modulo",
+      "newline_to_br",
+      "plus",
+      "prepend",
+      "remove",
+      "remove_first",
+      "replace",
+      "replace_first",
+      "reverse",
+      "round",
+      "rstrip",
+      "size",
+      "slice",
+      "sort",
+      "sort_natural",
+      "split",
+      "strip",
+      "strip_html",
+      "strip_newlines",
+      "times",
+      "truncate",
+      "truncatewords",
+      "uniq",
+      "upcase",
+      "url_decode",
+      "url_encode",
+      "where"
+    ],
+    "reserved_filters": [
+      "letterpress_escape"
+    ]
+  },
+  "contexts": [
+    "text",
+    "html_text",
+    "html_attribute",
+    "url",
+    "color",
+    "css",
+    "subject",
+    "none"
+  ],
+  "phases": [
+    "compile",
+    "delivery"
+  ],
+  "types": [
+    "string",
+    "integer",
+    "number",
+    "boolean",
+    "date",
+    "datetime",
+    "url",
+    "email",
+    "phone",
+    "object",
+    "list"
+  ],
+  "snippets": {
+    "email": [
+      {
+        "label": "email document",
+        "template": "<mjml>\n  <mj-head>\n    <mj-preview>${1:Preview}</mj-preview>\n  </mj-head>\n  <mj-body>\n    <mj-section>\n      <mj-column>\n        <mj-text>${2:Content}</mj-text>\n      </mj-column>\n    </mj-section>\n  </mj-body>\n</mjml>"
+      },
+      {
+        "label": "conditional section",
+        "template": "{% if ${1:condition} %}\n  <mj-section>\n    <mj-column>\n      <mj-text>${2:Content}</mj-text>\n    </mj-column>\n  </mj-section>\n{% endif %}"
+      }
+    ],
+    "text": [
+      {
+        "label": "conditional text",
+        "template": "{% if ${1:condition} %}${2:Text}{% endif %}"
+      },
+      {
+        "label": "variable",
+        "template": "{{ ${1:variable} }}"
+      }
+    ]
+  },
+  "diagnostic_codes": [
+    "LP_ARTIFACT_INVALID",
+    "LP_ARTIFACT_LIQUID",
+    "LP_COMPILE_VALUE_INVALID",
+    "LP_COMPILE_VALUE_MISSING",
+    "LP_COMPILER_DISABLED",
+    "LP_COMPILER_TIMEOUT",
+    "LP_COMPILER_UNAVAILABLE",
+    "LP_INPUT_INVALID",
+    "LP_INTERNAL_BOUNDARY",
+    "LP_LIQUID_FILTER_FORBIDDEN",
+    "LP_LIQUID_TAG_FORBIDDEN",
+    "LP_MJML_ATTRIBUTE_FORBIDDEN",
+    "LP_MJML_BODY",
+    "LP_MJML_COMPILE",
+    "LP_MJML_ELEMENT_FORBIDDEN",
+    "LP_MJML_INVALID_CHILD",
+    "LP_MJML_ROOT",
+    "LP_MJML_UNKNOWN_ELEMENT",
+    "LP_OPTIONS_INVALID",
+    "LP_PROFILE_INVALID",
+    "LP_PROFILE_UNKNOWN",
+    "LP_RENDER_INPUT_DEPTH",
+    "LP_RENDER_INPUT_ITEMS",
+    "LP_RENDER_INPUT_KEYS",
+    "LP_RENDER_INPUT_SCALAR",
+    "LP_RENDER_INVALID",
+    "LP_RENDER_LIQUID",
+    "LP_RENDER_LOOP_LIMIT",
+    "LP_RENDER_OUTPUT_LIMIT",
+    "LP_RENDER_RESOURCE_LIMIT",
+    "LP_RENDER_TIMEOUT",
+    "LP_RENDER_VALUE_INVALID",
+    "LP_RENDER_VALUE_MISSING",
+    "LP_RENDER_VALUE_UNKNOWN",
+    "LP_SCHEMA_CONTEXT_MISMATCH",
+    "LP_SCHEMA_DEFAULT",
+    "LP_SCHEMA_DEFINITION",
+    "LP_SCHEMA_DEPTH",
+    "LP_SCHEMA_DESCRIPTION",
+    "LP_SCHEMA_FIELD",
+    "LP_SCHEMA_INVALID",
+    "LP_SCHEMA_NAME",
+    "LP_SCHEMA_PHASE",
+    "LP_SCHEMA_PHASE_CONTEXT",
+    "LP_SCHEMA_PHASE_MISMATCH",
+    "LP_SCHEMA_PROPERTIES",
+    "LP_SCHEMA_REQUIRED",
+    "LP_SCHEMA_RESERVED",
+    "LP_SCHEMA_SENSITIVE",
+    "LP_SCHEMA_TOO_LARGE",
+    "LP_SCHEMA_SHAPE",
+    "LP_SCHEMA_TYPE",
+    "LP_SCHEMA_UNDECLARED_VARIABLE",
+    "LP_SCHEMA_UNUSED_VARIABLE",
+    "LP_SCHEMA_VARIABLES",
+    "LP_SCHEMA_VERSION",
+    "LP_SENTINEL_COLLISION",
+    "LP_SENTINEL_SURVIVAL",
+    "LP_SOURCE_INVALID",
+    "LP_SOURCE_NUL",
+    "LP_SOURCE_TOO_LARGE",
+    "LP_TRANSLATION_MISSING",
+    "LP_TRANSLATION_PLACEHOLDER"
+  ],
+  "limits": {
+    "source_bytes": 500000,
+    "schema_variables": 500,
+    "input_depth": 12,
+    "input_keys": 2000,
+    "scalar_bytes": 100000,
+    "collection_items": 1000,
+    "loop_iterations": 10000,
+    "output_bytes": 1000000
+  },
+  "generated_from": {
+    "mjml": "5.4.0",
+    "source": "contract/letterpress-v1.json"
+  }
+}

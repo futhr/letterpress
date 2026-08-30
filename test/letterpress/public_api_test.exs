@@ -1,0 +1,80 @@
+defmodule Letterpress.PublicAPITest do
+  @moduledoc false
+
+  use ExUnit.Case, async: false
+
+  import Letterpress.Test.Fixtures
+
+  test "exposes the versioned profiles and generated contract" do
+    assert Letterpress.version() == "0.1.0"
+    assert Letterpress.profiles() == ["email/mjml-liquid@1", "text/liquid@1"]
+    assert Letterpress.contract()["contract_version"] == 1
+    assert {:ok, %{"kind" => "email"}} = Letterpress.Profile.fetch("email/mjml-liquid@1")
+    assert :error = Letterpress.Profile.fetch("unknown")
+
+    assert :ok = Letterpress.Contract.reset()
+    assert Letterpress.Contract.get()["artifact_version"] == 1
+    assert Letterpress.Contract.get()["artifact_version"] == 1
+  end
+
+  test "public authoring calls reject malformed source, profile, options, and JSON input" do
+    assert_error_code(Letterpress.analyze(:email, "source", text_schema()), "LP_PROFILE_INVALID")
+
+    assert_error_code(
+      Letterpress.analyze("unknown", "source", text_schema()),
+      "LP_PROFILE_UNKNOWN"
+    )
+
+    assert_error_code(
+      Letterpress.analyze("text/liquid@1", nil, text_schema()),
+      "LP_SOURCE_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.compile("text/liquid@1", text_source(), text_schema(), %{timeout: 1}),
+      "LP_OPTIONS_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.compile("text/liquid@1", text_source(), text_schema(), unknown: true),
+      "LP_OPTIONS_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.compile("text/liquid@1", text_source(), text_schema(),
+        compile_values: %{bad: self()}
+      ),
+      "LP_INPUT_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.apply_translations("text/liquid@1", text_source(), text_schema(), self()),
+      "LP_INPUT_INVALID"
+    )
+
+    assert_error_code(Letterpress.format("text/liquid@1", :source), "LP_SOURCE_INVALID")
+    assert_error_code(Letterpress.format(:profile, "source"), "LP_PROFILE_INVALID")
+  end
+
+  test "artifact facade round trips canonical JSON" do
+    {:ok, artifact, _} = Letterpress.compile("text/liquid@1", text_source(), text_schema())
+    assert {:ok, json} = Letterpress.encode_artifact(artifact)
+    assert {:ok, ^artifact} = Letterpress.decode_artifact(json)
+    assert {:error, :invalid_artifact} = Letterpress.decode_artifact(:not_an_artifact)
+  end
+
+  test "translation extraction returns parser diagnostics for invalid source" do
+    assert {:error, diagnostics} =
+             Letterpress.extract_translation_units(
+               "email/mjml-liquid@1",
+               "<mjml>",
+               %{"version" => 1, "variables" => %{}}
+             )
+
+    assert Enum.any?(diagnostics, &(&1.severity == :error))
+  end
+
+  defp assert_error_code({:error, diagnostics}, code) do
+    assert Enum.any?(diagnostics, &(&1.code == code)), inspect(diagnostics)
+  end
+end

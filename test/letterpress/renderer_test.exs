@@ -1,0 +1,190 @@
+defmodule Letterpress.RendererTest do
+  @moduledoc false
+
+  use ExUnit.Case, async: false
+
+  import Letterpress.Test.Fixtures
+
+  alias Letterpress.{Artifact, CanonicalJSON}
+
+  setup do
+    {:ok, email, _} =
+      Letterpress.compile(
+        "email/mjml-liquid@1",
+        email_source(),
+        email_schema(),
+        email_compile_options()
+      )
+
+    {:ok, text, _} = Letterpress.compile("text/liquid@1", text_source(), text_schema())
+    %{email: email, text: text}
+  end
+
+  test "renders structural Liquid and context-escapes text, URL, and subject", %{email: artifact} do
+    assert {:ok, rendered} = Letterpress.render(artifact, email_values())
+    assert rendered.html =~ "ADA &lt;LOVELACE&gt;"
+    assert rendered.html =~ "https://example.test/account?a=1&amp;b=2"
+    assert rendered.subject == "Notice for Ada <Lovelace>"
+  end
+
+  test "a false structural branch disappears", %{email: artifact} do
+    values = Map.put(email_values(), "show_message", false)
+    assert {:ok, rendered} = Letterpress.render(artifact, values)
+    refute rendered.html =~ "Open account"
+  end
+
+  test "rejects unsafe URLs, missing values, wrong types, and oversized output", %{
+    email: email,
+    text: text
+  } do
+    assert {:error, diagnostics} =
+             Letterpress.render(
+               email,
+               Map.put(email_values(), "action_url", "javascript:alert(1)")
+             )
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_VALUE_INVALID"))
+
+    assert {:error, diagnostics} = Letterpress.render(text, %{"name" => "Ada"})
+    assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_VALUE_MISSING"))
+
+    assert {:error, diagnostics} =
+             Letterpress.render(text, %{"name" => "Ada", "code" => 123})
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_VALUE_INVALID"))
+
+    assert {:error, diagnostics} =
+             Letterpress.render(text, %{"name" => "Ada", "code" => "123"}, max_output_bytes: 4)
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_RENDER_OUTPUT_LIMIT"))
+  end
+
+  test "rendering does not depend on compiler process availability", %{text: artifact} do
+    :ok = Supervisor.terminate_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor)
+
+    assert {:ok, %{text: "Hello Ada, code 123"}} =
+             Letterpress.render(artifact, %{"name" => "Ada", "code" => "123"})
+
+    assert {:ok, _} =
+             Supervisor.restart_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor)
+  end
+
+  test "rejects undeclared values and malformed runtime options", %{text: artifact} do
+    values = %{"name" => "Ada", "code" => "123", "secret" => "do not accept me"}
+
+    assert {:error, [%{code: "LP_RENDER_VALUE_UNKNOWN"}]} =
+             Letterpress.render(artifact, values)
+
+    assert {:ok, %{text: "Hello Ada, code 123"}} =
+             Letterpress.render(artifact, values, strict_values: false)
+
+    assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} =
+             Letterpress.render(artifact, values, timeout: 0)
+  end
+
+  test "bounds nested Liquid loops independently of input collection limits" do
+    source =
+      "{% for first in items %}{% for second in items %}x{% endfor %}{% endfor %}"
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "items" => %{
+          "type" => "list",
+          "context" => "none",
+          "items" => %{"type" => "string"}
+        }
+      }
+    }
+
+    assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", source, schema)
+
+    assert {:error, [%{code: "LP_RENDER_LOOP_LIMIT"}]} =
+             Letterpress.render(artifact, %{"items" => List.duplicate("x", 101)})
+  end
+
+  test "applies nested defaults before rendering" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "recipient" => %{
+          "type" => "object",
+          "context" => "text",
+          "properties" => %{
+            "name" => %{"type" => "string", "default" => "friend", "required" => false}
+          }
+        }
+      }
+    }
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile("text/liquid@1", "Hello {{ recipient.name }}", schema)
+
+    assert {:ok, %{text: "Hello friend"}} =
+             Letterpress.render(artifact, %{"recipient" => %{}})
+  end
+
+  test "rejects every render-input budget violation before Liquid execution", %{text: artifact} do
+    too_deep = Enum.reduce(1..13, "value", fn index, acc -> %{"level_#{index}" => acc} end)
+
+    cases = [
+      {%{"name" => "Ada", "code" => String.duplicate("x", 100_001)}, "LP_RENDER_INPUT_SCALAR"},
+      {%{"name" => "Ada", "code" => "123", "extra" => too_deep}, "LP_RENDER_INPUT_DEPTH"},
+      {Map.new(0..2000, &{"key_#{&1}", &1}), "LP_RENDER_INPUT_KEYS"},
+      {%{"items" => Enum.to_list(0..1000)}, "LP_RENDER_INPUT_ITEMS"}
+    ]
+
+    for {values, code} <- cases do
+      assert {:error, diagnostics} = Letterpress.render(artifact, values, strict_values: false)
+      assert Enum.any?(diagnostics, &(&1.code == code)), inspect(diagnostics)
+    end
+
+    assert {:error, [%{code: "LP_RENDER_INVALID"}]} = Letterpress.render(artifact, self())
+  end
+
+  test "rejects a checksum-valid artifact containing unsupported Liquid", %{text: artifact} do
+    map =
+      artifact
+      |> Artifact.to_map()
+      |> Map.put("text", "{% assign secret = 'x' %}")
+      |> Map.put("variables", [])
+
+    forged =
+      Map.put(
+        map,
+        "content_sha256",
+        map |> Map.delete("content_sha256") |> CanonicalJSON.hash()
+      )
+
+    assert {:error, [%{code: "LP_ARTIFACT_LIQUID"}]} = Letterpress.render(forged, %{})
+  end
+
+  test "preserves bounded Liquid range, reverse, offset, else, break, and continue semantics" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "items" => %{
+          "type" => "list",
+          "context" => "none",
+          "required" => false,
+          "default" => [],
+          "items" => %{"type" => "string"}
+        }
+      }
+    }
+
+    cases = [
+      {"{% for item in (1..5) reversed limit: 2 offset: 1 %}{{ item }}{% endfor %}", "32"},
+      {"{% for item in items %}x{% else %}empty{% endfor %}", "empty"},
+      {"{% for item in (1..5) %}{% if item == 2 %}{% continue %}{% endif %}{{ item }}{% if item == 3 %}{% break %}{% endif %}{% endfor %}",
+       "13"},
+      {"{% for item in (1..4) limit: 2 %}{{ item }}{% endfor %}|{% for item in (1..4) offset: continue limit: 2 %}{{ item }}{% endfor %}",
+       "12|34"}
+    ]
+
+    for {source, expected} <- cases do
+      assert {:ok, artifact, _} = Letterpress.compile("text/liquid@1", source, schema)
+      assert {:ok, %{text: ^expected}} = Letterpress.render(artifact, %{})
+    end
+  end
+end

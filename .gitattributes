@@ -1,0 +1,4 @@
+priv/compiler/worker.mjs -diff -whitespace linguist-generated=true
+generated/letterpress-v1.json linguist-generated=true
+priv/contract.json linguist-generated=true
+npm/language/src/generated/contract.ts linguist-generated=true

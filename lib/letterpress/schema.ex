@@ -1,0 +1,372 @@
+defmodule Letterpress.Schema do
+  @moduledoc """
+  Validates and canonicalizes typed variable schema version 1.
+
+  The schema is deliberately JSON-native so artifacts can cross runtimes and
+  survive application upgrades without serializing Elixir terms.
+  """
+
+  alias Letterpress.{CanonicalJSON, Contract, Diagnostic, JSON}
+
+  @name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/
+  @segment_regex ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @allowed_fields ~w(type phase context required default description sensitive items properties)
+  @nested_fields ~w(type required default description sensitive items properties)
+
+  @doc "Normalizes a schema or returns stable diagnostics."
+  @spec normalize(map()) :: {:ok, map()} | {:error, [Diagnostic.t()]}
+  def normalize(schema) when is_map(schema) and not is_struct(schema) do
+    with {:ok, normalized} <- JSON.normalize_object(schema),
+         :ok <- validate_top_level_keys(normalized),
+         :ok <- validate_version(normalized),
+         {:ok, variables} <- normalize_variables(normalized["variables"]) do
+      {:ok, %{"version" => 1, "variables" => variables}}
+    else
+      {:error, :invalid_json_object} ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_INVALID", "Schema must contain JSON values")]}
+
+      error ->
+        error
+    end
+  end
+
+  def normalize(_),
+    do: {:error, [Diagnostic.simple("LP_SCHEMA_INVALID", "Schema must be a JSON object")]}
+
+  @doc "Returns the canonical SHA-256 hash of a normalized schema."
+  @spec hash(map()) :: String.t()
+  def hash(schema), do: CanonicalJSON.hash(schema)
+
+  defp validate_version(%{"version" => 1}), do: :ok
+
+  defp validate_version(_) do
+    {:error, [Diagnostic.simple("LP_SCHEMA_VERSION", "Schema version must be 1")]}
+  end
+
+  defp validate_top_level_keys(schema) do
+    if Enum.sort(Map.keys(schema)) == ~w(variables version) do
+      :ok
+    else
+      {:error,
+       [Diagnostic.simple("LP_SCHEMA_FIELD", "Schema must contain only version and variables")]}
+    end
+  end
+
+  defp normalize_variables(variables) when is_map(variables) and not is_struct(variables) do
+    limit = Contract.get()["limits"]["schema_variables"]
+
+    if map_size(variables) > limit do
+      {:error, [Diagnostic.simple("LP_SCHEMA_TOO_LARGE", "Schema has too many variables")]}
+    else
+      variables
+      |> Enum.sort_by(fn {name, _} -> to_string(name) end)
+      |> Enum.reduce_while({:ok, %{}}, &normalize_variable/2)
+    end
+  end
+
+  defp normalize_variables(_) do
+    {:error, [Diagnostic.simple("LP_SCHEMA_VARIABLES", "Schema variables must be an object")]}
+  end
+
+  defp normalize_variable({name, definition}, {:ok, acc}) do
+    name = to_string(name)
+
+    with :ok <- validate_name(name),
+         {:ok, normalized} <- normalize_definition(name, definition) do
+      {:cont, {:ok, Map.put(acc, name, normalized)}}
+    else
+      {:error, diagnostics} -> {:halt, {:error, diagnostics}}
+    end
+  end
+
+  defp validate_name(name) do
+    cond do
+      not Regex.match?(@name_regex, name) ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_NAME", "Invalid variable name #{name}")]}
+
+      String.starts_with?(name, "letterpress_") ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_RESERVED", "Variable name #{name} is reserved")]}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp normalize_definition(name, definition)
+       when is_map(definition) and not is_struct(definition) do
+    definition = definition
+    unknown = Map.keys(definition) -- @allowed_fields
+    types = Contract.get()["types"]
+    phases = Contract.get()["phases"]
+    contexts = Contract.get()["contexts"]
+    type = definition["type"]
+    phase = definition["phase"] || "delivery"
+    context = definition["context"] || "text"
+
+    cond do
+      unknown != [] ->
+        {:error,
+         [
+           Diagnostic.simple(
+             "LP_SCHEMA_FIELD",
+             "Unknown fields for #{name}: #{Enum.join(unknown, ", ")}"
+           )
+         ]}
+
+      type not in types ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_TYPE", "Invalid type for #{name}")]}
+
+      phase not in phases ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_PHASE", "Invalid phase for #{name}")]}
+
+      context not in contexts ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_CONTEXT", "Invalid context for #{name}")]}
+
+      phase == "delivery" and context in ["css", "color"] ->
+        {:error,
+         [
+           Diagnostic.simple(
+             "LP_SCHEMA_PHASE_CONTEXT",
+             "#{name} must be compile-phase in #{context} context"
+           )
+         ]}
+
+      not is_boolean(Map.get(definition, "required", true)) ->
+        {:error,
+         [Diagnostic.simple("LP_SCHEMA_REQUIRED", "required must be boolean for #{name}")]}
+
+      not is_boolean(Map.get(definition, "sensitive", false)) ->
+        {:error,
+         [Diagnostic.simple("LP_SCHEMA_SENSITIVE", "sensitive must be boolean for #{name}")]}
+
+      true ->
+        normalized =
+          definition
+          |> Map.put("phase", phase)
+          |> Map.put("context", context)
+          |> Map.put_new("required", true)
+          |> Map.put_new("sensitive", false)
+
+        with :ok <- validate_description(name, normalized),
+             {:ok, normalized} <- normalize_shape(name, normalized, 1),
+             :ok <- validate_default(name, normalized) do
+          {:ok, normalized}
+        end
+    end
+  end
+
+  defp normalize_definition(name, _) do
+    {:error,
+     [Diagnostic.simple("LP_SCHEMA_DEFINITION", "Definition for #{name} must be an object")]}
+  end
+
+  defp validate_default(name, %{"default" => value, "type" => type} = definition) do
+    if value_matches_definition?(value, definition) do
+      :ok
+    else
+      {:error,
+       [Diagnostic.simple("LP_SCHEMA_DEFAULT", "Default for #{name} does not match #{type}")]}
+    end
+  end
+
+  defp validate_default(_, _), do: :ok
+
+  defp validate_description(name, %{"description" => description}) when is_binary(description) do
+    if byte_size(description) <= Contract.get()["limits"]["scalar_bytes"] do
+      :ok
+    else
+      {:error,
+       [Diagnostic.simple("LP_SCHEMA_DESCRIPTION", "Description for #{name} is too large")]}
+    end
+  end
+
+  defp validate_description(name, %{"description" => _}) do
+    {:error,
+     [Diagnostic.simple("LP_SCHEMA_DESCRIPTION", "Description for #{name} must be a string")]}
+  end
+
+  defp validate_description(_, _), do: :ok
+
+  defp normalize_shape(name, %{"type" => "object"} = definition, depth) do
+    with :ok <- validate_schema_depth(name, depth),
+         {:ok, properties} <- normalize_properties(name, definition["properties"], depth) do
+      {:ok, definition |> Map.delete("items") |> Map.put("properties", properties)}
+    end
+  end
+
+  defp normalize_shape(name, %{"type" => "list"} = definition, depth) do
+    with :ok <- validate_schema_depth(name, depth),
+         {:ok, items} <- normalize_nested_definition("#{name}[]", definition["items"], depth + 1) do
+      {:ok, definition |> Map.delete("properties") |> Map.put("items", items)}
+    end
+  end
+
+  defp normalize_shape(name, definition, _) do
+    if Map.has_key?(definition, "items") or Map.has_key?(definition, "properties") do
+      {:error,
+       [
+         Diagnostic.simple(
+           "LP_SCHEMA_SHAPE",
+           "items and properties are only valid for collection variable #{name}"
+         )
+       ]}
+    else
+      {:ok, definition}
+    end
+  end
+
+  defp normalize_properties(name, properties, depth)
+       when is_map(properties) and not is_struct(properties) do
+    properties
+    |> Enum.sort_by(fn {key, _} -> to_string(key) end)
+    |> Enum.reduce_while({:ok, %{}}, fn {key, definition}, {:ok, acc} ->
+      key = to_string(key)
+
+      with true <- Regex.match?(@segment_regex, key),
+           {:ok, normalized} <-
+             normalize_nested_definition("#{name}.#{key}", definition, depth + 1) do
+        {:cont, {:ok, Map.put(acc, key, normalized)}}
+      else
+        false ->
+          {:halt,
+           {:error,
+            [Diagnostic.simple("LP_SCHEMA_NAME", "Invalid nested property #{name}.#{key}")]}}
+
+        {:error, diagnostics} ->
+          {:halt, {:error, diagnostics}}
+      end
+    end)
+  end
+
+  defp normalize_properties(name, _, _) do
+    {:error,
+     [Diagnostic.simple("LP_SCHEMA_PROPERTIES", "Object variable #{name} needs properties")]}
+  end
+
+  defp normalize_nested_definition(name, definition, depth)
+       when is_map(definition) and not is_struct(definition) do
+    definition = definition
+    unknown = Map.keys(definition) -- @nested_fields
+    type = definition["type"]
+
+    cond do
+      unknown != [] ->
+        {:error,
+         [
+           Diagnostic.simple(
+             "LP_SCHEMA_FIELD",
+             "Unknown nested fields for #{name}: #{Enum.join(unknown, ", ")}"
+           )
+         ]}
+
+      type not in Contract.get()["types"] ->
+        {:error, [Diagnostic.simple("LP_SCHEMA_TYPE", "Invalid type for #{name}")]}
+
+      not is_boolean(Map.get(definition, "required", true)) ->
+        {:error,
+         [Diagnostic.simple("LP_SCHEMA_REQUIRED", "required must be boolean for #{name}")]}
+
+      not is_boolean(Map.get(definition, "sensitive", false)) ->
+        {:error,
+         [Diagnostic.simple("LP_SCHEMA_SENSITIVE", "sensitive must be boolean for #{name}")]}
+
+      true ->
+        normalized =
+          definition
+          |> Map.put_new("required", true)
+          |> Map.put_new("sensitive", false)
+
+        with :ok <- validate_description(name, normalized),
+             {:ok, normalized} <- normalize_shape(name, normalized, depth),
+             :ok <- validate_default(name, normalized) do
+          {:ok, normalized}
+        end
+    end
+  end
+
+  defp normalize_nested_definition(name, _, _) do
+    {:error,
+     [Diagnostic.simple("LP_SCHEMA_DEFINITION", "Definition for #{name} must be an object")]}
+  end
+
+  defp validate_schema_depth(name, depth) do
+    if depth <= Contract.get()["limits"]["input_depth"] do
+      :ok
+    else
+      {:error, [Diagnostic.simple("LP_SCHEMA_DEPTH", "Schema for #{name} is too deep")]}
+    end
+  end
+
+  @doc false
+  @spec value_matches_type?(term(), String.t()) :: boolean()
+  def value_matches_type?(value, "string"), do: is_binary(value)
+  def value_matches_type?(value, "integer"), do: is_integer(value)
+  def value_matches_type?(value, "number"), do: is_number(value)
+  def value_matches_type?(value, "boolean"), do: is_boolean(value)
+
+  def value_matches_type?(value, "date"),
+    do: is_binary(value) and match?({:ok, _}, Date.from_iso8601(value))
+
+  def value_matches_type?(value, "datetime") do
+    is_binary(value) and match?({:ok, _, _}, DateTime.from_iso8601(value))
+  end
+
+  def value_matches_type?(value, "url") when is_binary(value) do
+    uri = URI.parse(value)
+
+    value != "" and not String.contains?(value, ["\r", "\n", <<0>>]) and
+      (is_nil(uri.scheme) or uri.scheme in ~w(http https mailto tel cid))
+  end
+
+  def value_matches_type?(_, "url"), do: false
+
+  def value_matches_type?(value, "email") when is_binary(value),
+    do: Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/u, value)
+
+  def value_matches_type?(_, "email"), do: false
+
+  def value_matches_type?(value, "phone") when is_binary(value),
+    do: Regex.match?(~r/\A\+[1-9][0-9]{7,14}\z/, value)
+
+  def value_matches_type?(_, "phone"), do: false
+  def value_matches_type?(value, "object"), do: is_map(value) and not is_struct(value)
+  def value_matches_type?(value, "list"), do: is_list(value)
+  def value_matches_type?(_, _), do: false
+
+  @doc false
+  @spec value_matches_definition?(term(), map()) :: boolean()
+  def value_matches_definition?(value, %{"type" => "object", "properties" => properties})
+      when is_map(value) and not is_struct(value) and is_map(properties) do
+    case JSON.normalize_object(value) do
+      {:ok, value} ->
+        Map.keys(value) -- Map.keys(properties) == [] and
+          Enum.all?(properties, fn {name, definition} ->
+            property_value = value[name]
+
+            cond do
+              is_nil(property_value) and definition["required"] == true and
+                  not Map.has_key?(definition, "default") ->
+                false
+
+              is_nil(property_value) ->
+                true
+
+              true ->
+                value_matches_definition?(property_value, definition)
+            end
+          end)
+
+      {:error, _} ->
+        false
+    end
+  end
+
+  def value_matches_definition?(value, %{"type" => "list", "items" => items})
+      when is_list(value) and is_map(items),
+      do: Enum.all?(value, &value_matches_definition?(&1, items))
+
+  def value_matches_definition?(value, %{"type" => type}),
+    do: value_matches_type?(value, type)
+
+  def value_matches_definition?(_, _), do: false
+end
