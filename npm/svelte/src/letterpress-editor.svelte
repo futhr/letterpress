@@ -2,6 +2,36 @@
 import type { Extension } from "@codemirror/state"
 import type { Profile, ServerDiagnostic, VariableSchema } from "@letterpress/language"
 
+export interface LetterpressEditorTheme {
+  editor: {
+    foreground: string
+    background: string
+    selection: string
+    activeLine: string
+    cursor: string
+    gutterForeground: string
+    gutterBackground: string
+    gutterBorder: string
+  }
+  syntax: {
+    tagName: string
+    angleBracket: string
+    attributeName: string
+    attributeValue: string
+    string: string
+    propertyName: string
+    className: string
+    brace: string
+    variableName: string
+    keyword: string
+    controlKeyword: string
+    url: string
+    number: string
+    comment: string
+    content: string
+  }
+}
+
 export interface LetterpressEditorProps {
   source?: string
   profile: Profile
@@ -10,7 +40,7 @@ export interface LetterpressEditorProps {
   documentVersion?: number
   sourceHash?: string
   extensions?: readonly Extension[]
-  theme?: Extension
+  theme?: LetterpressEditorTheme
   readOnly?: boolean
   autofocus?: boolean
   lineNumbers?: boolean
@@ -38,7 +68,9 @@ export interface LetterpressEditorProps {
     bracketMatching,
     foldGutter,
     foldKeymap,
+    HighlightStyle,
     indentOnInput,
+    syntaxHighlighting,
   } from "@codemirror/language"
   import { lintGutter as codeLintGutter } from "@codemirror/lint"
   import { search, searchKeymap } from "@codemirror/search"
@@ -54,6 +86,7 @@ export interface LetterpressEditorProps {
     placeholder as editorPlaceholder,
   } from "@codemirror/view"
   import { formatLetterpressSource, letterpressLanguage } from "@letterpress/language"
+  import { tags } from "@lezer/highlight"
   import { onMount } from "svelte"
 
   let {
@@ -64,7 +97,7 @@ export interface LetterpressEditorProps {
     documentVersion,
     sourceHash,
     extensions = [],
-    theme = [],
+    theme,
     readOnly = false,
     autofocus = false,
     lineNumbers = true,
@@ -107,6 +140,51 @@ export interface LetterpressEditorProps {
       lintGutter ? codeLintGutter() : [],
       lineWrapping ? EditorView.lineWrapping : [],
       placeholder ? editorPlaceholder(placeholder) : [],
+    ]
+  }
+
+  function themeExtension(): Extension {
+    if (!theme) return []
+
+    return [
+      EditorView.theme({
+        "&": {
+          color: theme.editor.foreground,
+          backgroundColor: theme.editor.background,
+        },
+        ".cm-content": { caretColor: theme.editor.cursor },
+        ".cm-cursor, .cm-dropCursor": { borderLeftColor: theme.editor.cursor },
+        "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
+          { backgroundColor: theme.editor.selection },
+        ".cm-activeLine, .cm-activeLineGutter": {
+          backgroundColor: theme.editor.activeLine,
+        },
+        ".cm-gutters": {
+          backgroundColor: theme.editor.gutterBackground,
+          color: theme.editor.gutterForeground,
+          borderRight: `1px solid ${theme.editor.gutterBorder}`,
+        },
+        ".cm-lineNumbers .cm-gutterElement": { color: theme.editor.gutterForeground },
+      }),
+      syntaxHighlighting(
+        HighlightStyle.define([
+          { tag: tags.tagName, color: theme.syntax.tagName },
+          { tag: tags.angleBracket, color: theme.syntax.angleBracket },
+          { tag: tags.attributeName, color: theme.syntax.attributeName },
+          { tag: tags.attributeValue, color: theme.syntax.attributeValue },
+          { tag: tags.string, color: theme.syntax.string },
+          { tag: tags.propertyName, color: theme.syntax.propertyName },
+          { tag: tags.className, color: theme.syntax.className },
+          { tag: tags.special(tags.brace), color: theme.syntax.brace },
+          { tag: tags.variableName, color: theme.syntax.variableName },
+          { tag: tags.keyword, color: theme.syntax.keyword },
+          { tag: tags.controlKeyword, color: theme.syntax.controlKeyword },
+          { tag: tags.url, color: theme.syntax.url },
+          { tag: tags.number, color: theme.syntax.number },
+          { tag: tags.comment, color: theme.syntax.comment, fontStyle: "italic" },
+          { tag: tags.content, color: theme.syntax.content },
+        ]),
+      ),
     ]
   }
 
@@ -161,7 +239,7 @@ export interface LetterpressEditorProps {
             onChange?.(source)
           }),
           languageCompartment.of(languageExtension()),
-          themeCompartment.of(theme),
+          themeCompartment.of(themeExtension()),
           editableCompartment.of([
             EditorState.readOnly.of(readOnly),
             EditorView.editable.of(!readOnly),
@@ -187,7 +265,7 @@ export interface LetterpressEditorProps {
 
   $effect(() => {
     if (!view) return
-    view.dispatch({ effects: themeCompartment.reconfigure(theme) })
+    view.dispatch({ effects: themeCompartment.reconfigure(themeExtension()) })
   })
 
   $effect(() => {

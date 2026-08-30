@@ -7,6 +7,11 @@ accessibility. Standard line-number, folding, lint, matching, indentation,
 completion, search, wrapping, and placeholder behavior is configurable through
 props. It does not call a backend or make publication decisions.
 
+Use the plain `LetterpressEditorTheme` contract for colors. Letterpress creates
+the underlying CodeMirror theme and highlighting extensions internally, so
+local linked consumers do not exchange identity-sensitive extension objects.
+The `extensions` prop remains available for advanced peer-deduplicated hosts.
+
 ```svelte
 <script lang="ts">
   import { LetterpressEditor } from "@letterpress/svelte"

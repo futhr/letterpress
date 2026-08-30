@@ -1,9 +1,39 @@
 import { mount, tick, unmount } from "svelte"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { LetterpressEditorTheme } from "../src/letterpress-editor.svelte"
 import LetterpressEditor from "../src/letterpress-editor.svelte"
 
 const mounted: ReturnType<typeof mount>[] = []
 const schema = { version: 1 as const, variables: { name: { type: "string" as const } } }
+const theme: LetterpressEditorTheme = {
+  editor: {
+    foreground: "#eeeeee",
+    background: "#101010",
+    selection: "#334455",
+    activeLine: "#202020",
+    cursor: "#ffffff",
+    gutterForeground: "#888888",
+    gutterBackground: "#101010",
+    gutterBorder: "#303030",
+  },
+  syntax: {
+    tagName: "#111111",
+    angleBracket: "#222222",
+    attributeName: "#333333",
+    attributeValue: "#444444",
+    string: "#555555",
+    propertyName: "#666666",
+    className: "#777777",
+    brace: "#888888",
+    variableName: "#999999",
+    keyword: "#aaaaaa",
+    controlKeyword: "#bbbbbb",
+    url: "#cccccc",
+    number: "#dddddd",
+    comment: "#eeeeee",
+    content: "#ffffff",
+  },
+}
 
 afterEach(async () => {
   for (const component of mounted.splice(0)) await unmount(component)
@@ -118,5 +148,21 @@ describe("LetterpressEditor", () => {
     expect(document.querySelector(".cm-lineNumbers")).toBeNull()
     expect(document.querySelector(".cm-foldGutter")).toBeNull()
     expect(document.querySelector(".cm-placeholder")?.textContent).toBe("Write a notification")
+  })
+
+  it("constructs themes internally from the plain cross-package contract", async () => {
+    const component = mount(LetterpressEditor, {
+      target: document.body,
+      props: {
+        source: "Hello {{ name }}",
+        profile: "text/liquid@1",
+        schema,
+        theme,
+      },
+    })
+    mounted.push(component)
+    await tick()
+
+    expect(document.querySelector(".cm-editor")?.className).toMatch(/cm-editor .+/)
   })
 })

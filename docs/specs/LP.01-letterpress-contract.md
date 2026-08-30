@@ -319,6 +319,12 @@ format hooks, and provides configurable line numbers, fold/lint gutters,
 matching, indentation, search, completion, line wrapping, and placeholders. It
 does not call a backend or decide UI layout.
 
+The normal theming boundary is a plain `LetterpressEditorTheme` value. The
+component constructs CodeMirror theme and highlight extensions inside its own
+runtime so linked local packages cannot create duplicate `@codemirror/state`
+identities. Raw `Extension` values remain an advanced escape hatch; consumers
+using that escape hatch must deduplicate CodeMirror peer dependencies.
+
 Both packages declare broad peer ranges for CodeMirror/Svelte and ship ESM,
 types, source maps, export maps, provenance-ready package metadata, and no
 undeclared runtime imports.

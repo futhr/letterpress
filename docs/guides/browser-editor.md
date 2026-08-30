@@ -17,6 +17,10 @@ The Svelte component owns CodeMirror lifecycle and standard editor behavior:
 line numbers, folding, lint markers, matching, indentation, completion, search,
 line wrapping, save/format keys, and controlled updates. The host owns layout,
 theme, persistence, backend calls, draft state, AI actions, and publication.
+Pass theme colors through the plain `LetterpressEditorTheme` contract. The
+component creates CodeMirror extensions internally, which keeps linked local
+consumers on one runtime identity. Reserve raw `extensions` for advanced
+behavior and deduplicate CodeMirror peers when using them.
 Pass backend diagnostics together with the source hash and document version;
 the extension drops stale responses so an older validation request cannot
 annotate newer text.
