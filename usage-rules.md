@@ -1,0 +1,30 @@
+# Letterpress usage rules
+
+## Compile before publication
+
+Call `Letterpress.compile/4` when validating preview or publication. Persist the
+complete returned artifact for every deliverable locale. A compiler error is an
+authoring/publication failure, not a reason to fall back to another renderer.
+
+## Render stored artifacts
+
+Call `Letterpress.render/3` at delivery with resolved values. Delivery nodes may
+set `config :letterpress, compiler_enabled: false`; valid stored artifacts still
+render without Node.
+
+## Keep application policy in the host
+
+The host owns authorization, tenancy, locales, publication state, retries,
+providers, and migrations. Convert legacy formats into a Letterpress profile
+before calling the normal compiler. Do not add a permissive migration mode.
+
+## Treat diagnostics as untrusted structured data
+
+Match on diagnostic codes and ranges, not English prose. Escape messages in
+the UI. Correlate asynchronous responses with `source_hash` and
+`document_version` before displaying them.
+
+## Do not persist resolved values
+
+Artifacts contain expressions and compiler provenance, not recipient data or
+secrets. Never place source, rendered output, or variable values in telemetry.

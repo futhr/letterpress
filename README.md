@@ -12,7 +12,7 @@ The project is pre-release. The public contract is specified in
 [`docs/specs/LP.01-letterpress-contract.md`](docs/specs/LP.01-letterpress-contract.md).
 No package has been published and no compatibility history is implied yet.
 
-## Intended packages
+## Packages
 
 | Registry | Package | Responsibility |
 |---|---|---|
@@ -45,9 +45,17 @@ mix setup
 mix check
 ```
 
-The release harness will build exact Hex and npm artifacts and install them in
-throwaway consumers, but this repository must not be tagged or published until
-the initial contract and adoption gates are complete.
+`mix check` runs the Elixir and browser gates, shared conformance corpus,
+package-export validation, release-contract tests, and exact contract checks.
+The release harness builds one Hex tarball and both npm tarballs once, records
+their hashes, and installs those exact bytes in throwaway consumers before a
+publish job can use them.
+
+Start with the [quick-start guide](docs/guides/quickstart.md). The
+[compiler/runtime guide](docs/guides/compiler-and-runtime.md) explains the
+authoring-versus-delivery split, and the
+[browser editor guide](docs/guides/browser-editor.md) covers CodeMirror and
+Svelte integration.
 
 ## License
 
