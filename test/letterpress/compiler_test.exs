@@ -47,6 +47,29 @@ defmodule Letterpress.CompilerTest do
     assert artifact.text =~ ~s(letterpress_escape: "text")
   end
 
+  test "discovers variable contexts before a consumer schema exists" do
+    source = """
+    <mjml><mj-body><mj-section><mj-column><mj-text>
+      Hello {{ user.name }}. <a href="{{ action_url }}">Open</a>
+    </mj-text></mj-column></mj-section></mj-body></mjml>
+    """
+
+    assert {:ok, analysis, []} = Letterpress.discover("email/mjml-liquid@1", source)
+
+    assert Enum.map(analysis["variables"], &{&1["name"], &1["context"]}) == [
+             {"user.name", "html_text"},
+             {"action_url", "url"}
+           ]
+
+    assert {:error, diagnostics} =
+             Letterpress.discover(
+               "email/mjml-liquid@1",
+               "<mjml><mj-body><mj-text>{{ name | escape }}</mj-text></mj-body></mjml>"
+             )
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_LIQUID_FILTER_FORBIDDEN"))
+  end
+
   test "reports forbidden elements, tags, filters, contexts, and undeclared variables" do
     cases = [
       {"<mjml><mj-body><mj-include path=\"x\" /></mj-body></mjml>", "LP_MJML_ELEMENT_FORBIDDEN"},

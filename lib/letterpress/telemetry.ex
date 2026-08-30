@@ -1,12 +1,12 @@
 defmodule Letterpress.Telemetry do
   @moduledoc """
-  Emits bounded compile, analyze, format, translation, and render telemetry.
+  Emits bounded discovery, compile, analyze, format, translation, and render telemetry.
 
   Metadata never includes source, output, values, variable names, or caller
   identifiers.
   """
 
-  @operations ~w(analyze compile render format apply_translations)a
+  @operations ~w(discover analyze compile render format apply_translations)a
 
   @doc "Runs a public operation with start/stop/exception telemetry."
   @spec span(atom(), String.t(), non_neg_integer(), (-> term())) :: term()

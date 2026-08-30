@@ -115,6 +115,13 @@ violations.
 The compiler reports discovered-but-undeclared and declared-but-unused
 variables separately. It never infers a security context from a variable name.
 
+`Letterpress.discover/3` is the schema-neutral migration and authoring seam. It
+returns parsed variable uses with their compiler-proven contexts while still
+enforcing profile grammar, source budgets, allowed MJML/HTML, Liquid tags, and
+filters. It does not infer types, phases, requiredness, or defaults and does
+not report undeclared/unused schema diagnostics. Consumers must build and
+review a schema, then call ordinary analysis or compilation before publication.
+
 ## 5. Compiler pipeline
 
 `Letterpress.compile/4` accepts profile, source, schema, and options and returns
@@ -318,6 +325,7 @@ The stable v1 entry points are:
 
 ```elixir
 Letterpress.profiles/0
+Letterpress.discover/3
 Letterpress.analyze/4
 Letterpress.compile/4
 Letterpress.render/3
@@ -335,8 +343,8 @@ render boundary.
 
 ## 13. Telemetry
 
-Letterpress emits start/stop/exception events for compile, analyze, render,
-format, and translation application under `[:letterpress, operation, phase]`.
+Letterpress emits start/stop/exception events for compile, discover, analyze,
+render, format, and translation application under `[:letterpress, operation, phase]`.
 Measurements include monotonic duration and bounded sizes/counts. Metadata may
 include profile, artifact version, result class, diagnostic codes, and compiler
 availability. Source, output, values, tenant IDs, template IDs, locale, and

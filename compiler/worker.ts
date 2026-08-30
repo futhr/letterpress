@@ -12,7 +12,7 @@ type AstNode = JsonObject & { type?: string; name?: unknown; position?: Position
 
 interface Request {
   id: string
-  operation: "analyze" | "compile" | "format" | "apply_translations" | "contract"
+  operation: "discover" | "analyze" | "compile" | "format" | "apply_translations" | "contract"
   payload?: JsonObject
 }
 
@@ -115,6 +115,8 @@ async function dispatch(request: Request): Promise<unknown> {
   switch (request.operation) {
     case "contract":
       return contract
+    case "discover":
+      return discoverPayload(request.payload ?? {})
     case "analyze":
       return analyzePayload(request.payload ?? {})
     case "compile":
@@ -126,6 +128,14 @@ async function dispatch(request: Request): Promise<unknown> {
     default:
       throw new Error("unsupported operation")
   }
+}
+
+function discoverPayload(payload: JsonObject): JsonObject {
+  const profile = requireString(payload.profile, "profile")
+  const source = requireString(payload.source, "source")
+  const documentVersion = optionalInteger(payload.document_version, 0)
+  const analysis = analyze(profile, source, {}, documentVersion, undefined, false, false)
+  return publicAnalysis(analysis)
 }
 
 function analyzePayload(payload: JsonObject): JsonObject {
@@ -385,6 +395,7 @@ function analyze(
   documentVersion: number,
   contextOverride?: string,
   reportUnused = true,
+  validateSchema = true,
 ): Analysis {
   const sourceHash = sha256(source)
   const diagnostics: Diagnostic[] = []
@@ -553,40 +564,42 @@ function analyze(
       .filter(Boolean),
   )
   for (const name of lookupVariables(ast)) used.add(name)
-  const declared = flattenSchema(schema)
-  for (const name of [...used].sort()) {
-    if (!declared.has(name) && !declared.has(name.split(".")[0] ?? name)) {
-      diagnostics.push(
-        diagnostic(
-          source,
-          sourceHash,
-          documentVersion,
-          findVariablePosition(variables, name),
-          "error",
-          "LP_SCHEMA_UNDECLARED_VARIABLE",
-          "letterpress-schema",
-          `Variable ${name} is not declared in the schema`,
-          { variable: name },
-        ),
-      )
-    }
-  }
-  if (reportUnused) {
-    for (const name of [...declared.keys()].sort()) {
-      if (!used.has(name) && ![...used].some((usedName) => usedName.startsWith(`${name}.`))) {
+  if (validateSchema) {
+    const declared = flattenSchema(schema)
+    for (const name of [...used].sort()) {
+      if (!declared.has(name) && !declared.has(name.split(".")[0] ?? name)) {
         diagnostics.push(
           diagnostic(
             source,
             sourceHash,
             documentVersion,
-            { start: 0, end: 0 },
-            "hint",
-            "LP_SCHEMA_UNUSED_VARIABLE",
+            findVariablePosition(variables, name),
+            "error",
+            "LP_SCHEMA_UNDECLARED_VARIABLE",
             "letterpress-schema",
-            `Variable ${name} is declared but not used`,
+            `Variable ${name} is not declared in the schema`,
             { variable: name },
           ),
         )
+      }
+    }
+    if (reportUnused) {
+      for (const name of [...declared.keys()].sort()) {
+        if (!used.has(name) && ![...used].some((usedName) => usedName.startsWith(`${name}.`))) {
+          diagnostics.push(
+            diagnostic(
+              source,
+              sourceHash,
+              documentVersion,
+              { start: 0, end: 0 },
+              "hint",
+              "LP_SCHEMA_UNUSED_VARIABLE",
+              "letterpress-schema",
+              `Variable ${name} is declared but not used`,
+              { variable: name },
+            ),
+          )
+        }
       }
     }
   }

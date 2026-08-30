@@ -8,7 +8,8 @@ defmodule Letterpress.Compiler do
 
   alias Letterpress.Compiler.Worker
 
-  @type operation :: :analyze | :compile | :format | :apply_translations | :contract
+  @type operation ::
+          :discover | :analyze | :compile | :format | :apply_translations | :contract
 
   @doc "Returns whether at least one compiler worker is available."
   @spec available?() :: boolean()

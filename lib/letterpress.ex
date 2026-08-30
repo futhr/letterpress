@@ -39,6 +39,28 @@ defmodule Letterpress do
   @spec contract() :: map()
   def contract, do: Contract.get()
 
+  @doc "Discovers variable uses and contexts without requiring or inferring a schema."
+  @spec discover(String.t(), String.t(), keyword()) ::
+          {:ok, map(), [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
+  def discover(profile, source, opts \\ []) do
+    Telemetry.span(:discover, profile_name(profile), input_size(source), fn ->
+      with :ok <- validate_source(source),
+           {:ok, opts} <- validate_options(opts, @base_options),
+           :ok <- Profile.validate(profile),
+           {:ok, result} <-
+             Compiler.request(:discover, %{
+               "profile" => profile,
+               "source" => source,
+               "document_version" => Keyword.fetch!(opts, :document_version)
+             }) do
+        finish_analysis(result)
+      else
+        {:error, diagnostics} when is_list(diagnostics) -> {:error, diagnostics}
+        {:error, reason} -> {:error, [Diagnostic.system(reason, profile, source, opts)]}
+      end
+    end)
+  end
+
   @doc "Analyzes source without creating an artifact."
   @spec analyze(String.t(), String.t(), map(), keyword()) ::
           {:ok, map(), [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
