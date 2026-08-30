@@ -75,12 +75,18 @@ defmodule Letterpress.CompilerTest do
 
     assert {:ok, analysis, []} = Letterpress.discover("text/liquid@1", source)
 
-    assert Enum.map(analysis["dependencies"], &{&1["name"], &1["context"]}) == [
-             {"enabled", "none"},
-             {"items", "none"}
+    assert Enum.map(analysis["dependencies"], &{&1["name"], &1["context"], &1["kind"]}) == [
+             {"enabled", "none", "condition"},
+             {"items", "none", "collection"}
            ]
 
-    assert [%{"name" => "item.name", "local" => true}] = analysis["variables"]
+    assert [
+             %{
+               "name" => "item.name",
+               "local" => true,
+               "binding" => %{"name" => "item", "collection" => "items"}
+             }
+           ] = analysis["variables"]
   end
 
   test "reports forbidden elements, tags, filters, contexts, and undeclared variables" do

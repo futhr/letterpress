@@ -39,12 +39,17 @@ interface VariableUse {
   raw: string
   filters: string[]
   local: boolean
+  binding?: {
+    name: string
+    collection: string
+  }
 }
 
 interface VariableDependency {
   name: string
   context: "none"
   position: Position
+  kind: "condition" | "collection" | "lookup"
 }
 
 interface Analysis {
@@ -529,6 +534,7 @@ function analyze(
       const context = contextOverride ?? contextFor(node, ancestors, edge, profile)
       const name = variableName(node)
       const filters = filtersOf(node)
+      const binding = localBinding(name, ancestors)
       variables.push({
         name,
         context,
@@ -536,6 +542,7 @@ function analyze(
         raw: rawLiquid(node),
         filters,
         local: localVariable(name, ancestors),
+        ...(binding === undefined ? {} : { binding }),
       })
       validateLiquidUse(
         name,
@@ -1052,12 +1059,13 @@ function prepareSubject(
 function publicAnalysis(analysis: Analysis): JsonObject {
   return {
     diagnostics: analysis.diagnostics,
-    variables: analysis.variables.map(({ name, context, position, filters, local }) => ({
+    variables: analysis.variables.map(({ name, context, position, filters, local, binding }) => ({
       name,
       context,
       position,
       filters,
       local,
+      ...(binding === undefined ? {} : { binding }),
     })),
     dependencies: analysis.dependencies,
     translation_units: analysis.translation_units,
@@ -1137,6 +1145,7 @@ function lookupDependencies(ast: AstNode): VariableDependency[] {
           name,
           context: "none",
           position: node.position ?? { start: 0, end: 0 },
+          kind: dependencyKind(node, ancestors),
         })
       }
     }
@@ -1146,6 +1155,49 @@ function lookupDependencies(ast: AstNode): VariableDependency[] {
       ? left.name.localeCompare(right.name)
       : left.position.start - right.position.start,
   )
+}
+
+function dependencyKind(node: AstNode, ancestors: AstNode[]): VariableDependency["kind"] {
+  const forTag = [...ancestors]
+    .reverse()
+    .find((ancestor) => ancestor.type === "LiquidTag" && ancestor.name === "for")
+  const collection = (forTag?.markup as JsonObject | undefined)?.collection
+
+  if (collection === node) return "collection"
+
+  if (
+    ancestors.some(
+      (ancestor) =>
+        ancestor.type === "LiquidTag" && ["if", "unless", "case"].includes(String(ancestor.name)),
+    )
+  ) {
+    return "condition"
+  }
+
+  return "lookup"
+}
+
+function localBinding(name: string, ancestors: AstNode[]): VariableUse["binding"] | undefined {
+  const root = name.split(".")[0] ?? ""
+  const forTag = [...ancestors].reverse().find((ancestor) => {
+    if (ancestor.type !== "LiquidTag" || ancestor.name !== "for") return false
+    const markup = ancestor.markup as JsonObject | undefined
+    return String(markup?.variableName ?? "") === root
+  })
+
+  if (!forTag) return undefined
+
+  const markup = forTag.markup as JsonObject | undefined
+  const collection = markup?.collection as JsonObject | undefined
+  const collectionRoot = String(collection?.name ?? "")
+  const collectionLookups = Array.isArray(collection?.lookups)
+    ? collection.lookups.map((item) => String((item as JsonObject).value ?? ""))
+    : []
+
+  return {
+    name: root,
+    collection: [collectionRoot, ...collectionLookups].filter(Boolean).join("."),
+  }
 }
 
 function localVariable(name: string, ancestors: AstNode[]): boolean {
@@ -1158,11 +1210,7 @@ function localVariable(name: string, ancestors: AstNode[]): boolean {
     return true
   }
 
-  return ancestors.some((ancestor) => {
-    if (ancestor.type !== "LiquidTag" || ancestor.name !== "for") return false
-    const markup = ancestor.markup as JsonObject | undefined
-    return String(markup?.variableName ?? "") === root
-  })
+  return localBinding(name, ancestors) !== undefined
 }
 
 function childrenOf(node: AstNode): AstNode[] {
