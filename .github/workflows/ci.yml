@@ -1,0 +1,138 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: quality (elixir ${{ matrix.elixir }} / otp ${{ matrix.otp }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include: >-
+          ${{ github.event_name == 'pull_request'
+          && fromJson('[{"elixir":"1.20","otp":"29","check":"full"}]')
+          || fromJson('[{"elixir":"1.18","otp":"27","check":"floor"},{"elixir":"1.20","otp":"29","check":"full"}]') }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        if: matrix.check == 'full'
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        if: matrix.check == 'full'
+        with:
+          path: priv/plts/core
+          key: ${{ runner.os }}-plt-core-${{ matrix.elixir }}-${{ matrix.otp }}
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        if: matrix.check == 'full'
+        with:
+          path: priv/plts/local
+          key: ${{ runner.os }}-plt-local-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-plt-local-${{ matrix.elixir }}-${{ matrix.otp }}-
+      - run: mkdir -p priv/plts/core priv/plts/local
+        if: matrix.check == 'full'
+      - run: mix deps.get
+      - run: pnpm install --frozen-lockfile
+        if: matrix.check == 'full'
+      - run: mix compile --warnings-as-errors && mix test
+        if: matrix.check == 'floor'
+      - run: mix check
+        if: matrix.check == 'full'
+      - name: Audit production JavaScript dependencies
+        if: matrix.check == 'full'
+        run: pnpm audit --prod
+        continue-on-error: true
+      - name: Upload Elixir coverage
+        if: matrix.check == 'full'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
+        with:
+          files: cover/lcov.info
+          flags: elixir
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload language-package coverage
+        if: matrix.check == 'full'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
+        with:
+          files: npm/language/coverage/lcov.info
+          flags: language
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload Svelte-package coverage
+        if: matrix.check == 'full'
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
+        with:
+          files: npm/svelte/coverage/lcov.info
+          flags: svelte
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  compiler-portability:
+    name: worker (${{ matrix.os }} / node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:compiler
+      - run: mkdir -p dist && shasum -a 256 priv/compiler/worker.mjs | awk '{print $1}' > dist/worker.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: worker-${{ matrix.os }}-node-${{ matrix.node }}
+          path: dist/worker.sha256
+
+  compiler-determinism:
+    name: deterministic worker bundle
+    needs: compiler-portability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: worker-*
+          path: dist
+      - name: Require one hash across every supported Node and OS pair
+        run: test "$(cat dist/*/worker.sha256 | sort -u | wc -l)" -eq 1

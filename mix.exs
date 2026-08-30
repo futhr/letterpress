@@ -80,24 +80,62 @@ defmodule Letterpress.MixProject do
       maintainers: ["Tobias Bohwalli <hi@futhr.io>"],
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files:
-        ~w(lib priv/compiler/worker.mjs priv/contract.json mix.exs README.md LICENSE usage-rules.md)
+      files: ~w(
+          lib
+          priv/compiler/worker.mjs
+          priv/contract.json
+          conformance/fixtures.json
+          docs/adr
+          docs/guides
+          docs/specs
+          mix.exs
+          README.md
+          CHANGELOG.md
+          CONTRIBUTING.md
+          LICENSE
+          RELEASING.md
+          SECURITY.md
+          usage-rules.md
+        )
     ]
   end
 
   defp docs do
     [
-      main: "readme",
+      main: "readme-1",
       source_url: @source_url,
       source_ref: "v#{@version}",
       extras: [
         "README.md": [title: "Overview"],
+        "docs/guides/quickstart.md": [title: "Quick start"],
+        "docs/guides/compiler-and-runtime.md": [title: "Compiler and runtime"],
+        "docs/guides/browser-editor.md": [title: "Browser editor"],
+        "docs/guides/consumer-adoption.md": [title: "Consumer adoption"],
+        "docs/guides/troubleshooting.md": [title: "Troubleshooting"],
+        "docs/conformance/README.md": [title: "Conformance"],
+        "docs/adr/ADR.001-backend-authority.md": [title: "ADR.001 backend authority"],
+        "docs/adr/ADR.002-host-boundary.md": [title: "ADR.002 host boundary"],
         "usage-rules.md": [title: "Usage rules"],
-        "docs/specs/LP.01-letterpress-contract.md": [title: "LP.01 contract"]
+        "docs/specs/LP.01-letterpress-contract.md": [title: "LP.01 contract"],
+        "CONTRIBUTING.md": [title: "Contributing"],
+        "RELEASING.md": [title: "Releasing"],
+        "SECURITY.md": [title: "Security"],
+        "CHANGELOG.md": [title: "Changelog"],
+        LICENSE: [title: "License"]
       ],
       groups_for_extras: [
+        Guides: ~r/docs\/guides/,
         Contract: ["docs/specs/LP.01-letterpress-contract.md"],
-        Reference: ["usage-rules.md"]
+        Architecture: ~r/docs\/adr/,
+        Reference: [
+          "docs/conformance/README.md",
+          "usage-rules.md",
+          "CONTRIBUTING.md",
+          "RELEASING.md",
+          "SECURITY.md",
+          "CHANGELOG.md",
+          "LICENSE"
+        ]
       ],
       groups_for_modules: [
         "Public API": [Letterpress, Letterpress.Artifact, Letterpress.Diagnostic],

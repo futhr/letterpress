@@ -3,6 +3,7 @@
 /.elixir_ls/
 /cover/
 /doc/
+/dist/
 *.beam
 *.ez
 erl_crash.dump
