@@ -25,7 +25,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "node ../../scripts/clean-package.mjs dist && tsc -p tsconfig.json",
+    "build": "node ../../scripts/clean-package.mjs dist && tsc -p tsconfig.json && node ../../scripts/bundle-formatter.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage",
     "check:publish": "publint && attw --pack . --profile esm-only -q"
@@ -38,12 +38,10 @@
     "@codemirror/language": "^6.0.0",
     "@codemirror/lint": "^6.0.0",
     "@codemirror/state": "^6.0.0",
-    "@codemirror/view": "^6.0.0",
-    "prettier": "^3.0.0"
+    "@codemirror/view": "^6.0.0"
   },
   "dependencies": {
-    "@shopify/liquid-html-parser": "2.10.0",
-    "@shopify/prettier-plugin-liquid": "1.11.0"
+    "@shopify/liquid-html-parser": "2.10.0"
   },
   "homepage": "https://github.com/futhr/letterpress",
   "repository": {

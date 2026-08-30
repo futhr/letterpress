@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { cssLanguage } from "@codemirror/lang-css"
 import { liquidLanguage } from "@codemirror/lang-liquid"
 import { EditorState } from "@codemirror/state"
@@ -31,11 +33,36 @@ const schema: VariableSchema = {
 }
 
 const views: EditorView[] = []
+const conformance = JSON.parse(
+  readFileSync(resolve(process.cwd(), "../../conformance/fixtures.json"), "utf8"),
+) as {
+  version: number
+  analysis: Array<{
+    name: string
+    profile: "email/mjml-liquid@1" | "text/liquid@1"
+    source: string
+    schema: VariableSchema
+    browser_codes: string[]
+  }>
+}
 afterEach(() => {
   for (const view of views.splice(0)) view.destroy()
 })
 
 describe("Letterpress language contract", () => {
+  it("consumes the shared analysis conformance corpus", () => {
+    expect(conformance.version).toBe(1)
+    for (const fixture of conformance.analysis) {
+      const view = createView(fixture.source, fixture.profile, fixture.schema)
+      const codes = localDiagnostics(view, {
+        profile: fixture.profile,
+        schema: fixture.schema,
+      }).map((diagnostic) => diagnostic.source?.split(" · ").at(-1))
+      expect(codes, fixture.name).toEqual(expect.arrayContaining(fixture.browser_codes))
+      if (fixture.browser_codes.length === 0) expect(codes, fixture.name).toEqual([])
+    }
+  })
+
   it("contains generated official MJML metadata and immutable profiles", () => {
     expect(Object.keys(contract.profiles)).toEqual(["email/mjml-liquid@1", "text/liquid@1"])
     expect(
@@ -154,6 +181,24 @@ describe("Letterpress language contract", () => {
     expect(localDiagnostics(view, { profile: "email/mjml-liquid@1", schema })).toEqual([])
   })
 
+  it("reports schema phase and output-context mismatches", () => {
+    const source = `<mjml><mj-head><mj-style>.brand { color: {{ show }}; }</mj-style></mj-head><mj-body>
+      <mj-section><mj-column><mj-text><a href="{{ user.name }}">Hello</a></mj-text></mj-column></mj-section>
+    </mj-body></mjml>`
+    const view = createView(source)
+    const codes = localDiagnostics(view, {
+      profile: "email/mjml-liquid@1",
+      schema,
+    }).map((diagnostic) => diagnostic.source)
+
+    expect(codes).toEqual(
+      expect.arrayContaining([
+        "letterpress · LP_SCHEMA_PHASE_MISMATCH",
+        "letterpress · LP_SCHEMA_CONTEXT_MISMATCH",
+      ]),
+    )
+  })
+
   it("rejects unsafe HTML, event handlers, invalid MJML attributes, and nesting", () => {
     const source = `<mjml><mj-body>
       <mj-section href="https://example.com"><mj-text><a onclick="alert(1)">bad</a><script>bad</script></mj-text></mj-section>
@@ -195,10 +240,14 @@ function labels(source: string, profile: "email/mjml-liquid@1" | "text/liquid@1"
   return completionsAt(source, source.length, { profile, schema }).map((item) => item.label)
 }
 
-function createView(doc: string): EditorView {
+function createView(
+  doc: string,
+  profile: "email/mjml-liquid@1" | "text/liquid@1" = "email/mjml-liquid@1",
+  variableSchema: VariableSchema = schema,
+): EditorView {
   const state = EditorState.create({
     doc,
-    extensions: [letterpressLanguage({ profile: "email/mjml-liquid@1", schema, lintDelay: 0 })],
+    extensions: [letterpressLanguage({ profile, schema: variableSchema, lintDelay: 0 })],
   })
   const view = new EditorView({ state, parent: document.body })
   views.push(view)

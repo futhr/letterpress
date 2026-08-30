@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "analysis": [
+    {
+      "name": "valid rich email",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml lang=\"en\"><mj-body><mj-section><mj-column><mj-text>Hello <strong>{{ name }}</strong> <a href=\"{{ action_url }}\" data-track=\"primary\">Open</a></mj-text></mj-column></mj-section></mj-body></mjml>",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "action_url": { "type": "url", "context": "url" },
+          "name": { "type": "string", "context": "html_text" }
+        }
+      },
+      "backend_codes": [],
+      "browser_codes": []
+    },
+    {
+      "name": "valid text loop scope",
+      "profile": "text/liquid@1",
+      "source": "{% for item in items offset: continue %}{{ item.name }}{% endfor %}",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "items": {
+            "type": "list",
+            "context": "none",
+            "items": { "type": "object", "properties": { "name": { "type": "string" } } }
+          }
+        }
+      },
+      "backend_codes": [],
+      "browser_codes": []
+    },
+    {
+      "name": "forbidden MJML include",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-body><mj-include path=\"remote.mjml\" /></mj-body></mjml>",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_MJML_ELEMENT_FORBIDDEN"],
+      "browser_codes": ["LP_MJML_ELEMENT_FORBIDDEN"]
+    },
+    {
+      "name": "unsafe embedded HTML",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-body><mj-section><mj-column><mj-text><a href=\"https://example.test\" onclick=\"steal()\">Open</a><script>alert(1)</script></mj-text></mj-column></mj-section></mj-body></mjml>",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_HTML_ATTRIBUTE_FORBIDDEN", "LP_HTML_ELEMENT_FORBIDDEN"],
+      "browser_codes": ["LP_HTML_ATTRIBUTE_FORBIDDEN", "LP_HTML_ELEMENT_FORBIDDEN"]
+    },
+    {
+      "name": "element-specific MJML attributes",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-body><mj-section href=\"https://example.test\"><mj-column /></mj-section></mj-body></mjml>",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_MJML_ATTRIBUTE_FORBIDDEN"],
+      "browser_codes": ["LP_MJML_ATTRIBUTE_FORBIDDEN"]
+    },
+    {
+      "name": "undeclared variable and forbidden filter",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-body><mj-section><mj-column><mj-text>{{ missing | escape }}</mj-text></mj-column></mj-section></mj-body></mjml>",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE", "LP_LIQUID_FILTER_FORBIDDEN"],
+      "browser_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE", "LP_LIQUID_FILTER_FORBIDDEN"]
+    },
+    {
+      "name": "context mismatch",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-body><mj-section><mj-column><mj-text><a href=\"{{ label }}\">Open</a></mj-text></mj-column></mj-section></mj-body></mjml>",
+      "schema": {
+        "version": 1,
+        "variables": { "label": { "type": "string", "context": "html_text" } }
+      },
+      "backend_codes": ["LP_SCHEMA_CONTEXT_MISMATCH"],
+      "browser_codes": ["LP_SCHEMA_CONTEXT_MISMATCH"]
+    },
+    {
+      "name": "malformed closing tag",
+      "profile": "text/liquid@1",
+      "source": "{% endif %}",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_PARSE"],
+      "browser_codes": ["LP_PARSE"]
+    }
+  ]
+}

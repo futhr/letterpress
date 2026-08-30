@@ -8,8 +8,10 @@
       "!**/dist",
       "!**/coverage",
       "!**/node_modules",
+      "!generated",
       "!npm/language/src/generated",
-      "!priv/compiler/worker.mjs"
+      "!priv/compiler/worker.mjs",
+      "!priv/contract.json"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },

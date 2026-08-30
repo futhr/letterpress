@@ -99,6 +99,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(happy-dom@20.11.15)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2))
@@ -132,12 +135,6 @@ importers:
       '@shopify/liquid-html-parser':
         specifier: 2.10.0
         version: 2.10.0
-      '@shopify/prettier-plugin-liquid':
-        specifier: 1.11.0
-        version: 1.11.0(prettier@3.9.6)
-      prettier:
-        specifier: ^3.0.0
-        version: 3.9.6
 
   npm/svelte:
     dependencies:

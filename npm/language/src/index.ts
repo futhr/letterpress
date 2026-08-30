@@ -13,8 +13,6 @@ import { type Diagnostic as CodeMirrorDiagnostic, linter } from "@codemirror/lin
 import type { Extension } from "@codemirror/state"
 import type { EditorView } from "@codemirror/view"
 import { toLiquidHtmlAST } from "@shopify/liquid-html-parser"
-import liquidPlugin from "@shopify/prettier-plugin-liquid"
-import { format as prettierFormat } from "prettier/standalone"
 import { contract } from "./generated/contract.js"
 
 export { contract }
@@ -90,13 +88,8 @@ export function letterpressLanguage(config: LanguageConfig): Extension {
 
 export async function formatLetterpressSource(profile: Profile, source: string): Promise<string> {
   if (profile === "text/liquid@1") return source.trimEnd()
-  return prettierFormat(source, {
-    parser: "liquid-html",
-    plugins: [liquidPlugin],
-    printWidth: 100,
-    tabWidth: 2,
-    singleQuote: false,
-  })
+  const { formatLiquidSource } = await import("./formatter.js")
+  return formatLiquidSource(source)
 }
 
 export function localDiagnostics(view: EditorView, config: LanguageConfig): CodeMirrorDiagnostic[] {
@@ -315,13 +308,14 @@ function validateDocument(source: string, config: LanguageConfig): CodeMirrorDia
       allowUnclosedDocumentNode: true,
     }) as unknown as AstNode
   } catch {
-    return diagnostics
+    if (sourceLooksIncomplete(source)) return diagnostics
+    return [documentProblem("Template syntax is invalid", "LP_PARSE")]
   }
 
   if (config.profile === "email/mjml-liquid@1") validateMjmlRoot(ast, diagnostics)
 
   walk(ast, [], (node, ancestors) => {
-    validateLiquidNode(node, ancestors, config.schema, diagnostics)
+    validateLiquidNode(node, ancestors, config.profile, config.schema, diagnostics)
     if (config.profile === "email/mjml-liquid@1" && htmlElementTypes.has(node.type ?? "")) {
       validateElementNode(node, ancestors, diagnostics)
     }
@@ -329,9 +323,15 @@ function validateDocument(source: string, config: LanguageConfig): CodeMirrorDia
   return diagnostics
 }
 
+function sourceLooksIncomplete(source: string): boolean {
+  const trimmed = source.trimEnd()
+  return /(?:{{|{%|<\/?[A-Za-z0-9:-]*)$/.test(trimmed)
+}
+
 function validateLiquidNode(
   node: AstNode,
   ancestors: AstNode[],
+  profile: Profile,
   schema: VariableSchema,
   diagnostics: CodeMirrorDiagnostic[],
 ): void {
@@ -359,8 +359,81 @@ function validateLiquidNode(
       diagnostics.push(
         astProblem(node, `Variable ${name} is not declared`, "LP_SCHEMA_UNDECLARED_VARIABLE"),
       )
+    } else if (name && ancestors.at(-1)?.type === "LiquidVariable") {
+      validateVariableContext(node, name, ancestors, profile, schema, diagnostics)
     }
   }
+}
+
+function validateVariableContext(
+  node: AstNode,
+  name: string,
+  ancestors: AstNode[],
+  profile: Profile,
+  schema: VariableSchema,
+  diagnostics: CodeMirrorDiagnostic[],
+): void {
+  const output = ancestors.some((ancestor) => ancestor.type === "LiquidVariableOutput")
+  if (!output) return
+  const definition = schema.variables[name] ?? schema.variables[name.split(".")[0] ?? name]
+  if (!definition) return
+
+  const context = profile === "text/liquid@1" ? "text" : outputContext(ancestors)
+  const phase = definition.phase ?? "delivery"
+  const declaredContext = definition.context ?? "text"
+  if ((context === "css" || context === "color") && phase !== "compile") {
+    diagnostics.push(
+      astProblem(
+        node,
+        `${name} must be compile-phase in ${context} context`,
+        "LP_SCHEMA_PHASE_MISMATCH",
+      ),
+    )
+  }
+  if (declaredContext !== "none" && !compatibleContext(declaredContext, context)) {
+    diagnostics.push(
+      astProblem(
+        node,
+        `${name} is declared for ${declaredContext}, not ${context}`,
+        "LP_SCHEMA_CONTEXT_MISMATCH",
+      ),
+    )
+  }
+}
+
+function outputContext(ancestors: AstNode[]): VariableContext {
+  const attribute = [...ancestors].reverse().find((ancestor) => ancestor.type?.startsWith("Attr"))
+  if (attribute) {
+    const name = elementName(attribute)
+    if (
+      emailProfile.url_attributes.includes(name as (typeof emailProfile.url_attributes)[number]) ||
+      contract.embedded_html.url_attributes.includes(
+        name as (typeof contract.embedded_html.url_attributes)[number],
+      )
+    ) {
+      return "url"
+    }
+    if (
+      emailProfile.color_attributes.includes(
+        name as (typeof emailProfile.color_attributes)[number],
+      ) ||
+      name.endsWith("-color")
+    ) {
+      return "color"
+    }
+    if (name === "style") return "css"
+    return "html_attribute"
+  }
+
+  const element = [...ancestors]
+    .reverse()
+    .find((ancestor) => htmlElementTypes.has(ancestor.type ?? ""))
+  return elementName(element) === "mj-style" ? "css" : "html_text"
+}
+
+function compatibleContext(declared: VariableContext, actual: VariableContext): boolean {
+  if (declared === actual) return true
+  return declared === "text" && ["text", "html_text", "subject"].includes(actual)
 }
 
 function validateMjmlRoot(ast: AstNode, diagnostics: CodeMirrorDiagnostic[]): void {
