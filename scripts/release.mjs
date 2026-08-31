@@ -33,6 +33,10 @@ export function isCanonicalRepositoryRemote(origin) {
   return CANONICAL_REMOTES.has(origin)
 }
 
+export function mergeSmokeDependencies(existing, peers) {
+  return { ...peers, ...existing }
+}
+
 export function readReleaseVersions(root) {
   const mix = readFileSync(join(root, "mix.exs"), "utf8")
   return {
@@ -303,13 +307,13 @@ async function publishArtifacts(root, output, options) {
 function smokeNpmArtifacts(sourceRoot, output, manifest) {
   const root = mkdtempSync(join(tmpdir(), "letterpress-npm-smoke-"))
   try {
-    const dependencies = Object.fromEntries(
+    let dependencies = Object.fromEntries(
       manifest.artifacts
         .filter(({ ecosystem }) => ecosystem === "npm")
         .map(({ name, file }) => [name, `file:${join(output, file)}`]),
     )
     for (const pkg of PACKAGES) {
-      Object.assign(
+      dependencies = mergeSmokeDependencies(
         dependencies,
         readJson(join(sourceRoot, pkg.directory, "package.json")).peerDependencies,
       )
