@@ -6,7 +6,11 @@ defmodule Letterpress.ConformanceTest do
   @fixtures Path.expand("../../conformance/fixtures.json", __DIR__)
 
   test "the backend consumes the shared analysis conformance corpus" do
-    fixtures = @fixtures |> File.read!() |> Jason.decode!()
+    fixtures =
+      @fixtures
+      |> File.read!()
+      |> Jason.decode!()
+
     assert fixtures["version"] == 1
 
     for fixture <- fixtures["analysis"] do

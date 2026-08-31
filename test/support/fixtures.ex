@@ -1,6 +1,7 @@
 defmodule Letterpress.Test.Fixtures do
   @moduledoc false
 
+  @spec email_source() :: String.t()
   def email_source do
     """
     <mjml>
@@ -22,6 +23,7 @@ defmodule Letterpress.Test.Fixtures do
     """
   end
 
+  @spec email_schema() :: map()
   def email_schema do
     %{
       "version" => 1,
@@ -35,6 +37,7 @@ defmodule Letterpress.Test.Fixtures do
     }
   end
 
+  @spec email_compile_options() :: keyword()
   def email_compile_options do
     [
       subject: "Notice for {{ user.name }}",
@@ -43,6 +46,7 @@ defmodule Letterpress.Test.Fixtures do
     ]
   end
 
+  @spec email_values() :: map()
   def email_values do
     %{
       "action_url" => "https://example.test/account?a=1&b=2",
@@ -52,8 +56,10 @@ defmodule Letterpress.Test.Fixtures do
     }
   end
 
+  @spec text_source() :: String.t()
   def text_source, do: "Hello {{ name }}, code {{ code }}"
 
+  @spec text_schema() :: map()
   def text_schema do
     %{
       "version" => 1,

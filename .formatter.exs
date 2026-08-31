@@ -1,4 +1,8 @@
 [
-  inputs: ["{mix,.formatter,.check,.doctor}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  inputs: [
+    "{mix,.formatter,.check,.doctor}.exs",
+    "{lib,test}/**/*.{ex,exs}",
+    "{bench,scripts}/**/*.exs"
+  ],
   line_length: 98
 ]
