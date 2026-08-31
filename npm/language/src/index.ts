@@ -445,7 +445,10 @@ function outputContext(ancestors: AstNode[]): VariableContext {
 
 function compatibleContext(declared: VariableContext, actual: VariableContext): boolean {
   if (declared === actual) return true
-  return declared === "text" && ["text", "html_text", "subject"].includes(actual)
+  if (declared === "text")
+    return ["text", "html_text", "html_attribute", "subject"].includes(actual)
+  if (declared === "url") return ["url", "text", "html_text", "subject"].includes(actual)
+  return declared === "color" && ["color", "css"].includes(actual)
 }
 
 function validateMjmlRoot(ast: AstNode, diagnostics: CodeMirrorDiagnostic[]): void {

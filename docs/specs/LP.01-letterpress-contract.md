@@ -112,10 +112,19 @@ Rendering rejects missing required delivery values, unknown values when strict
 mode is active, invalid types, unsafe URLs, CR/LF in subject values, and budget
 violations.
 
-A variable declared with URL type/context may also be emitted into the plain
-text channel. It retains URL type validation and receives plain-text output
-handling there; URL declarations are never accepted in general HTML text or
-non-URL attributes.
+Context declarations form a deliberately narrow compatibility lattice so one
+typed value can be reused across the outputs of an atomic email artifact:
+
+- `text` may be emitted as plain text, HTML text, an HTML attribute, or a
+  subject; the compiler still injects the escape filter for each actual use.
+- `url` may be emitted in a URL-bearing attribute or displayed as plain text,
+  HTML text, or a subject. URL type validation remains mandatory.
+- compile-phase `color` may be emitted in a color attribute or a CSS value;
+  every occurrence is validated against its actual sink before MJML runs.
+
+Other context combinations remain incompatible. In particular, a general
+text declaration cannot enter a URL, color, or CSS sink, and URL declarations
+cannot enter arbitrary HTML attributes.
 
 The compiler reports discovered-but-undeclared and declared-but-unused
 variables separately. It never infers a security context from a variable name.

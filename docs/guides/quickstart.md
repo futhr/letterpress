@@ -27,6 +27,11 @@ this child.
 Define an explicit schema. Contexts describe where a value may be emitted;
 they are security rules, not documentation labels.
 
+The `text`, `url`, and compile-phase `color` contexts support the documented
+compatible email sinks, so the same typed value can safely appear in HTML,
+subject, and plain-text alternatives while each occurrence receives its
+sink-specific validation and escaping.
+
 ```elixir
 schema = %{
   "version" => 1,

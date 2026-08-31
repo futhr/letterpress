@@ -156,7 +156,7 @@ describe("Letterpress language contract", () => {
     expect(labels("{{ campaign.csd_registered?", "email/mjml-liquid@1")).toContain(
       "campaign.csd_registered?",
     )
-    expect(labels("{{ user.na", "email/mjml-liquid@1")).not.toContain("url")
+    expect(labels("{{ user.na", "email/mjml-liquid@1")).toContain("url")
     expect(labels("{{ name | up", "email/mjml-liquid@1")).toContain("upcase")
     expect(labels("{% i", "email/mjml-liquid@1")).toContain("if")
     expect(labels("{% if sh", "email/mjml-liquid@1")).toContain("show")
@@ -196,6 +196,31 @@ describe("Letterpress language contract", () => {
     const view = createView(source)
 
     expect(localDiagnostics(view, { profile: "email/mjml-liquid@1", schema })).toEqual([])
+  })
+
+  it("accepts typed values reused across compatible email contexts", () => {
+    const source = `<mjml><mj-head><mj-style>.accent { color: {{ accent }}; }</mj-style></mj-head><mj-body>
+      <mj-section><mj-column>
+        <mj-image src="https://example.test/logo.png" alt="{{ label }}" />
+        <mj-text color="{{ accent }}">{{ label }} <a href="{{ action_url }}">{{ action_url }}</a></mj-text>
+      </mj-column></mj-section>
+    </mj-body></mjml>`
+    const view = createView(source)
+    const reusableSchema: VariableSchema = {
+      version: 1,
+      variables: {
+        accent: { type: "string", phase: "compile", context: "color" },
+        action_url: { type: "url", context: "url" },
+        label: { type: "string", context: "text" },
+      },
+    }
+
+    expect(
+      localDiagnostics(view, {
+        profile: "email/mjml-liquid@1",
+        schema: reusableSchema,
+      }),
+    ).toEqual([])
   })
 
   it("reports schema phase and output-context mismatches", () => {

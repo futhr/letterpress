@@ -1458,8 +1458,10 @@ function schemaDefinition(schema: JsonObject, name: string): JsonObject | undefi
 
 function compatibleContext(declared: string, actual: string): boolean {
   if (declared === actual) return true
-  if (declared === "text") return ["text", "html_text", "subject"].includes(actual)
-  if (declared === "url") return actual === "text"
+  if (declared === "text")
+    return ["text", "html_text", "html_attribute", "subject"].includes(actual)
+  if (declared === "url") return ["url", "text", "html_text", "subject"].includes(actual)
+  if (declared === "color") return ["color", "css"].includes(actual)
   if (declared === "html_attribute") return actual === "html_attribute"
   return false
 }

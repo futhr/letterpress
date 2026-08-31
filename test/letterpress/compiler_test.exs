@@ -103,6 +103,56 @@ defmodule Letterpress.CompilerTest do
     refute Enum.any?(diagnostics, &(&1.code == "LP_SCHEMA_UNUSED_VARIABLE"))
   end
 
+  test "one typed value may span compatible email output contexts" do
+    source = """
+    <mjml>
+      <mj-head>
+        <mj-title>{{ label }}</mj-title>
+        <mj-style>.accent { border-color: {{ accent }}; }</mj-style>
+      </mj-head>
+      <mj-body>
+        <mj-section>
+          <mj-column>
+            <mj-image src="https://example.test/logo.png" alt="{{ label }}" />
+            <mj-text color="{{ accent }}">
+              {{ label }} <a href="{{ action_url }}">{{ action_url }}</a>
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+    """
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "accent" => %{"type" => "string", "phase" => "compile", "context" => "color"},
+        "action_url" => %{"type" => "url", "context" => "url"},
+        "label" => %{"type" => "string", "context" => "text"}
+      }
+    }
+
+    assert {:ok, artifact, diagnostics} =
+             Letterpress.compile("email/mjml-liquid@1", source, schema,
+               subject: "{{ label }}",
+               text: "{{ label }}: {{ action_url }}",
+               compile_values: %{"accent" => "#336699"}
+             )
+
+    assert Enum.all?(diagnostics, &(&1.severity != :error))
+
+    assert {:ok, rendered} =
+             Letterpress.render(artifact, %{
+               "action_url" => "https://example.test/path?a=1&b=2",
+               "label" => ~s(Acme "North")
+             })
+
+    assert rendered.subject == ~s(Acme "North")
+    assert rendered.text == ~s(Acme "North": https://example.test/path?a=1&b=2)
+    assert rendered.html =~ ~s(alt="Acme &quot;North&quot;")
+    assert rendered.html =~ "https://example.test/path?a=1&amp;b=2"
+  end
+
   test "discovers variable contexts before a consumer schema exists" do
     source = """
     <mjml><mj-body><mj-section><mj-column><mj-text>
