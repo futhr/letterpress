@@ -53,15 +53,16 @@ Letterpress must never import a consumer module or name a consumer product.
 
 ## 3. Profiles
 
-Version 1 defines exactly two profiles:
+Version 1 defines exactly three profiles:
 
 | Identifier | Source | Compiled artifact |
 |---|---|---|
 | `email/mjml-liquid@1` | MJML 5.4 with restricted Liquid expressions | HTML Liquid template, optional text Liquid template, metadata |
+| `html/liquid@1` | Allow-listed HTML fragment with restricted Liquid expressions | HTML Liquid template and metadata |
 | `text/liquid@1` | Restricted Liquid plain text | Text Liquid template and metadata |
 
-Push, JSON, voice, EEx, Mustache, Handlebars, EJS, and arbitrary HTML are not
-v1 runtime profiles. Consumers may convert those formats before invoking
+Push, JSON, voice, EEx, Mustache, Handlebars, EJS, and unrestricted HTML are
+not v1 runtime profiles. Consumers may convert those formats before invoking
 Letterpress. A new profile version is additive; changing the meaning of an
 existing identifier is forbidden.
 
@@ -81,6 +82,20 @@ existing identifier is forbidden.
   schema context and configured scheme allow-list.
 - Raw Liquid output is forbidden. `raw`, `include`, `render`, filesystem access,
   arbitrary filter registration, and user-defined tags are forbidden.
+
+### HTML fragment source rules
+
+- Output is an HTML fragment, not a document. Only the contract's embedded-HTML
+  element and attribute allow-lists are accepted.
+- Scriptable elements, event-handler attributes, dynamic element or attribute
+  names, and unclassified URL/style sinks are forbidden.
+- Static URL-bearing attributes accept relative or fragment references and the
+  `http`, `https`, `mailto`, `tel`, and `cid` schemes; protocol-relative,
+  obfuscated, control-bearing, and other absolute schemes are rejected.
+- Liquid output is context-checked and receives its final `html_text`,
+  `html_attribute`, `url`, or `css` escape filter according to the parsed sink.
+- The email profile's restrictions on Liquid tags, filters, raw output, file
+  access, and budgets apply unchanged.
 
 ### Text source rules
 
@@ -146,8 +161,9 @@ ordinary analysis or compilation before publication.
 
 The email profile accepts optional `:subject` and `:text` Liquid sources. Both
 are analyzed against the same schema, compiled into the same immutable
-artifact, and rendered atomically with HTML. The text profile uses its primary
-source as the text channel and rejects those email-only options.
+artifact, and rendered atomically with HTML. The HTML and text profiles use
+their primary source as the corresponding single channel and reject those
+email-only options.
 
 For `email/mjml-liquid@1` the authoritative pipeline is:
 
@@ -176,7 +192,11 @@ duplication site, unmodeled relocation, or unmapped compiler error fails
 closed. A modeled duplication spanning multiple contexts receives a distinct
 final context filter at each output location.
 
-`text/liquid@1` runs the same Liquid/schema analysis without MJML compilation.
+`html/liquid@1` validates the parsed fragment against the embedded-HTML
+allow-list, resolves compile values, proves delivery sentinels remain in their
+modeled output contexts, and emits HTML Liquid without invoking MJML.
+`text/liquid@1` runs the same Liquid/schema analysis without HTML or MJML
+compilation.
 
 ## 6. Supervised compiler worker
 
@@ -305,12 +325,12 @@ nodes, and allow-listed human-facing attributes. IDs derive from profile,
 structural source path, context, and source text hash. Units include source
 range, context, source text, placeholders, and optional description.
 
-The `text/liquid@1` profile represents its human-facing content as one
-whole-document translation unit. This keeps surrounding whitespace and Liquid
-control flow intact for short notification bodies and email subjects while the
-placeholder-signature check prevents a translation provider from changing
-outputs or tags. A text document containing only whitespace and Liquid syntax
-has no translation unit.
+The `html/liquid@1` and `text/liquid@1` profiles represent their human-facing
+content as one whole-document translation unit. This keeps surrounding
+whitespace, inline markup, and Liquid control flow intact for short fragments
+while the structural signature prevents a translation provider from changing
+markup, attributes, outputs, or tags. A document containing only whitespace
+and Liquid syntax has no translation unit.
 
 Applying translations:
 

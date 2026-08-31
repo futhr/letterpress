@@ -17,10 +17,11 @@
 
 ---
 
-Letterpress compiles profile-based MJML and Liquid source into an immutable,
-portable artifact, then renders that artifact in pure BEAM code at delivery
-time. Its CodeMirror and Svelte 5 packages use the same generated grammar,
-diagnostics, schema, and completions without making the browser authoritative.
+Letterpress compiles profile-based MJML, bounded HTML, and plain-text Liquid
+source into an immutable, portable artifact, then renders that artifact in pure
+BEAM code at delivery time. Its CodeMirror and Svelte 5 packages use the same
+generated grammar, diagnostics, schema, and completions without making the
+browser authoritative.
 
 ---
 

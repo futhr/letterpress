@@ -62,6 +62,13 @@
       "structural_elements": ["mj-body", "mj-wrapper", "mj-section", "mj-group", "mj-column"],
       "common_attributes": ["css-class", "mj-class"]
     },
+    "html/liquid@1": {
+      "kind": "html",
+      "language": "html-liquid",
+      "root": null,
+      "elements": [],
+      "forbidden_elements": []
+    },
     "text/liquid@1": {
       "kind": "text",
       "language": "liquid",

@@ -11,7 +11,7 @@ defmodule Letterpress.Profile do
   ## Example
 
       iex> Letterpress.Profile.all()
-      ["email/mjml-liquid@1", "text/liquid@1"]
+      ["email/mjml-liquid@1", "html/liquid@1", "text/liquid@1"]
   """
 
   alias Letterpress.{Contract, Diagnostic}

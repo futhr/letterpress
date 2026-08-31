@@ -72,7 +72,7 @@ defmodule Letterpress do
   ## Example
 
       iex> Letterpress.profiles()
-      ["email/mjml-liquid@1", "text/liquid@1"]
+      ["email/mjml-liquid@1", "html/liquid@1", "text/liquid@1"]
   """
   @spec profiles() :: [String.t()]
   def profiles, do: Profile.all()
@@ -383,13 +383,14 @@ defmodule Letterpress do
   defp validate_source(_),
     do: {:error, [Diagnostic.simple("LP_SOURCE_INVALID", "Source must be a string")]}
 
-  defp validate_compile_channels("text/liquid@1", opts) do
+  defp validate_compile_channels(profile, opts)
+       when profile in ["html/liquid@1", "text/liquid@1"] do
     if Keyword.has_key?(opts, :subject) or Keyword.has_key?(opts, :text) do
       {:error,
        [
          Diagnostic.simple(
            "LP_OPTIONS_INVALID",
-           "Text profiles do not accept email subject or text-alternative options"
+           "Single-channel profiles do not accept email subject or text-alternative options"
          )
        ]}
     else

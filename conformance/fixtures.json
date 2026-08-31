@@ -33,6 +33,41 @@
       "browser_codes": []
     },
     {
+      "name": "valid bounded HTML fragment",
+      "profile": "html/liquid@1",
+      "source": "<p>Hello <strong>{{ name }}</strong>. <a href=\"{{ action_url }}\">Open</a></p>",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "action_url": { "type": "url", "context": "url" },
+          "name": { "type": "string", "context": "html_text" }
+        }
+      },
+      "backend_codes": [],
+      "browser_codes": []
+    },
+    {
+      "name": "unsafe HTML fragment",
+      "profile": "html/liquid@1",
+      "source": "<script onclick=\"steal()\">{{ name }}</script>",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "name": { "type": "string", "context": "html_text" }
+        }
+      },
+      "backend_codes": ["LP_HTML_ELEMENT_FORBIDDEN"],
+      "browser_codes": ["LP_HTML_ELEMENT_FORBIDDEN"]
+    },
+    {
+      "name": "unsafe static HTML URL",
+      "profile": "html/liquid@1",
+      "source": "<a href=\"javascript&#58;alert(1)\">Open</a>",
+      "schema": { "version": 1, "variables": {} },
+      "backend_codes": ["LP_HTML_ATTRIBUTE_FORBIDDEN"],
+      "browser_codes": ["LP_HTML_ATTRIBUTE_FORBIDDEN"]
+    },
+    {
       "name": "forbidden MJML include",
       "profile": "email/mjml-liquid@1",
       "source": "<mjml><mj-body><mj-include path=\"remote.mjml\" /></mj-body></mjml>",

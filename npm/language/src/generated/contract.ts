@@ -1197,6 +1197,13 @@ export const contract = {
         ]
       }
     },
+    "html/liquid@1": {
+      "kind": "html",
+      "language": "html-liquid",
+      "root": null,
+      "elements": [],
+      "forbidden_elements": []
+    },
     "text/liquid@1": {
       "kind": "text",
       "language": "liquid",

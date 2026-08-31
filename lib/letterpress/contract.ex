@@ -14,7 +14,7 @@ defmodule Letterpress.Contract do
 
       iex> contract = Letterpress.Contract.get()
       iex> {contract["contract_version"], Map.keys(contract["profiles"]) |> Enum.sort()}
-      {1, ["email/mjml-liquid@1", "text/liquid@1"]}
+      {1, ["email/mjml-liquid@1", "html/liquid@1", "text/liquid@1"]}
   """
 
   @persistent_key {__MODULE__, :contract}

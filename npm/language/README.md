@@ -1,9 +1,10 @@
 # `@letterpress/language`
 
 Framework-neutral CodeMirror 6 language services for Letterpress's immutable
-`email/mjml-liquid@1` and `text/liquid@1` profiles. The generated contract,
-MJML metadata, completion, folding, formatting, and local diagnostics mirror
-the authoritative Hex compiler; publication must still use the backend.
+`email/mjml-liquid@1`, `html/liquid@1`, and `text/liquid@1` profiles. The
+generated contract, MJML/HTML metadata, completion, folding, formatting, and
+local diagnostics mirror the authoritative Hex compiler; publication must
+still use the backend.
 
 The MJML + Liquid formatter is lazy-loaded as a browser-only bundle. Consumers
 do not need to install Prettier or the Shopify formatter plugin.

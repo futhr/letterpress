@@ -250,6 +250,15 @@ defmodule Letterpress.Artifact do
   end
 
   defp validate_channels(%{
+         "profile" => "html/liquid@1",
+         "html" => html,
+         "text" => nil,
+         "subject" => nil
+       })
+       when is_binary(html),
+       do: validate_template(html)
+
+  defp validate_channels(%{
          "profile" => "text/liquid@1",
          "html" => nil,
          "text" => text,

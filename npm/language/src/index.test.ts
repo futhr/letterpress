@@ -12,6 +12,7 @@ import {
   letterpressLanguage,
   localDiagnostics,
   mapServerDiagnostics,
+  type Profile,
   type VariableSchema,
 } from "./index.js"
 
@@ -40,7 +41,7 @@ const conformance = JSON.parse(
   version: number
   analysis: Array<{
     name: string
-    profile: "email/mjml-liquid@1" | "text/liquid@1"
+    profile: Profile
     source: string
     schema: VariableSchema
     browser_codes: string[]
@@ -65,7 +66,11 @@ describe("Letterpress language contract", () => {
   })
 
   it("contains generated official MJML metadata and immutable profiles", () => {
-    expect(Object.keys(contract.profiles)).toEqual(["email/mjml-liquid@1", "text/liquid@1"])
+    expect(Object.keys(contract.profiles)).toEqual([
+      "email/mjml-liquid@1",
+      "html/liquid@1",
+      "text/liquid@1",
+    ])
     expect(
       contract.profiles["email/mjml-liquid@1"].element_metadata["mj-button"].attributes.href,
     ).toBe("string")
@@ -148,7 +153,47 @@ describe("Letterpress language contract", () => {
       "<mjml><mj-body><mj-section><mj-column><mj-text>Hello</mj-text></mj-column></mj-section></mj-body></mjml>"
     const once = await formatLetterpressSource("email/mjml-liquid@1", source)
     expect(await formatLetterpressSource("email/mjml-liquid@1", once)).toBe(once)
+    const html = await formatLetterpressSource("html/liquid@1", "<p>Hello {{ user.name }}</p>")
+    expect(await formatLetterpressSource("html/liquid@1", html)).toBe(html)
     expect(await formatLetterpressSource("text/liquid@1", "Hello  \n")).toBe("Hello")
+  })
+
+  it("validates and completes bounded HTML fragments", () => {
+    const valid = createView(
+      '<p>Hello {{ user.name }} <a href="{{ url }}">Open</a></p>',
+      "html/liquid@1",
+    )
+    expect(localDiagnostics(valid, { profile: "html/liquid@1", schema })).toEqual([])
+
+    const invalid = createView(
+      '<script onclick="steal()">{{ user.name }}</script>',
+      "html/liquid@1",
+    )
+    expect(
+      localDiagnostics(invalid, { profile: "html/liquid@1", schema }).map((item) => item.source),
+    ).toEqual(expect.arrayContaining(["letterpress · LP_HTML_ELEMENT_FORBIDDEN"]))
+
+    expect(labels("<a hr", "html/liquid@1")).toContain("href")
+    expect(labels("<st", "html/liquid@1")).toContain("strong")
+  })
+
+  it("rejects dynamic HTML names and unsafe static URLs locally", () => {
+    const unsafe = [
+      "<p {{ attribute }}>unsafe</p>",
+      '<a href="javascript:alert(1)">unsafe</a>',
+      '<a href="//example.test/steal">unsafe</a>',
+      "<{{ tag }}>unsafe</{{ tag }}>",
+    ]
+
+    for (const source of unsafe) {
+      const diagnostics = localDiagnostics(createView(source, "html/liquid@1"), {
+        profile: "html/liquid@1",
+        schema,
+      })
+      expect(diagnostics.map((item) => item.source)).toEqual(
+        expect.arrayContaining([expect.stringMatching(/LP_HTML_(?:ATTRIBUTE|ELEMENT)_FORBIDDEN/)]),
+      )
+    }
   })
 
   it("offers only contract tags, filters, variables, MJML children, and attributes", () => {
@@ -278,13 +323,13 @@ function serverDiagnostic(
   }
 }
 
-function labels(source: string, profile: "email/mjml-liquid@1" | "text/liquid@1"): string[] {
+function labels(source: string, profile: Profile): string[] {
   return completionsAt(source, source.length, { profile, schema }).map((item) => item.label)
 }
 
 function createView(
   doc: string,
-  profile: "email/mjml-liquid@1" | "text/liquid@1" = "email/mjml-liquid@1",
+  profile: Profile = "email/mjml-liquid@1",
   variableSchema: VariableSchema = schema,
 ): EditorView {
   const state = EditorState.create({

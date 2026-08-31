@@ -122,6 +122,48 @@ defmodule Letterpress.TranslationTest do
     assert Enum.any?(diagnostics, &(&1.code == "LP_TRANSLATION_PLACEHOLDER"))
   end
 
+  test "HTML fragment translations preserve markup, attributes, and Liquid exactly" do
+    source = ~s(<p class="notice">Hello <a href="{{ action_url }}">{{ name }}</a></p>)
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "action_url" => %{"type" => "url", "context" => "url"},
+        "name" => %{"type" => "string", "context" => "html_text"}
+      }
+    }
+
+    assert {:ok, [unit], []} =
+             Letterpress.extract_translation_units("html/liquid@1", source, schema)
+
+    translated =
+      ~s(<p class="notice">Hej <a href="{{ action_url }}">{{ name }}</a></p>)
+
+    assert {:ok, ^translated, []} =
+             Letterpress.apply_translations(
+               "html/liquid@1",
+               source,
+               schema,
+               %{unit["id"] => translated}
+             )
+
+    for changed <- [
+          ~s(<p class="warning">Hej <a href="{{ action_url }}">{{ name }}</a></p>),
+          ~s(<p class="notice">Hej <a href="https://example.test">{{ name }}</a></p>),
+          ~s(<p class="notice">Hej <strong>{{ name }}</strong></p>)
+        ] do
+      assert {:error, diagnostics} =
+               Letterpress.apply_translations(
+                 "html/liquid@1",
+                 source,
+                 schema,
+                 %{unit["id"] => changed}
+               )
+
+      assert Enum.any?(diagnostics, &(&1.code == "LP_TRANSLATION_PLACEHOLDER"))
+    end
+  end
+
   defp email_source do
     "<mjml><mj-body><mj-section><mj-column><mj-text>Hello {{ name }}</mj-text></mj-column></mj-section></mj-body></mjml>"
   end

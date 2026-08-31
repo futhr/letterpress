@@ -71,7 +71,9 @@ export function letterpressLanguage(config: LanguageConfig): Extension {
   const language =
     config.profile === "email/mjml-liquid@1"
       ? liquid({ base: emailBaseLanguage() })
-      : new LanguageSupport(liquidLanguage, [closePercentBrace])
+      : config.profile === "html/liquid@1"
+        ? liquid({ base: html({ autoCloseTags: true, matchClosingTags: true }) })
+        : new LanguageSupport(liquidLanguage, [closePercentBrace])
 
   return [
     language,
@@ -186,6 +188,12 @@ export function completionsAt(
   if (config.profile === "email/mjml-liquid@1" && /<\/?[A-Za-z-]*$/.test(before)) {
     return mjmlElementCompletions(before)
   }
+  if (config.profile === "html/liquid@1" && /<[^>]*\s+[A-Za-z-]*$/.test(before)) {
+    return htmlAttributeCompletions(before)
+  }
+  if (config.profile === "html/liquid@1" && /<\/?[A-Za-z-]*$/.test(before)) {
+    return htmlElementCompletions()
+  }
   return contract.snippets[config.profile === "email/mjml-liquid@1" ? "email" : "text"].map(
     (snippet) => snippetCompletion(snippet.template, { label: snippet.label, type: "text" }),
   )
@@ -284,6 +292,19 @@ function mjmlAttributeCompletions(before: string): Completion[] {
     .map(([label, rule]) => ({ label, type: "property", detail: String(rule) }))
 }
 
+function htmlElementCompletions(): Completion[] {
+  return [...contract.embedded_html.elements].sort().map((label) => ({ label, type: "type" }))
+}
+
+function htmlAttributeCompletions(before: string): Completion[] {
+  const name = /<([A-Za-z][A-Za-z0-9-]*)[^>]*$/.exec(before)?.[1]
+  if (!name) return []
+  const perElement = contract.embedded_html.attributes as Record<string, readonly string[]>
+  return [...new Set([...contract.embedded_html.global_attributes, ...(perElement[name] ?? [])])]
+    .sort()
+    .map((label) => ({ label, type: "property" }))
+}
+
 type AstNode = Record<string, unknown> & {
   type?: string
   name?: unknown
@@ -328,8 +349,8 @@ function validateDocument(source: string, config: LanguageConfig): CodeMirrorDia
 
   walk(ast, [], (node, ancestors) => {
     validateLiquidNode(node, ancestors, config.profile, config.schema, diagnostics)
-    if (config.profile === "email/mjml-liquid@1" && htmlElementTypes.has(node.type ?? "")) {
-      validateElementNode(node, ancestors, diagnostics)
+    if (config.profile !== "text/liquid@1" && htmlElementTypes.has(node.type ?? "")) {
+      validateElementNode(node, ancestors, config.profile, diagnostics)
     }
   })
   return diagnostics
@@ -467,10 +488,20 @@ function validateMjmlRoot(ast: AstNode, diagnostics: CodeMirrorDiagnostic[]): vo
 function validateElementNode(
   node: AstNode,
   ancestors: AstNode[],
+  profile: Profile,
   diagnostics: CodeMirrorDiagnostic[],
 ): void {
   const name = elementName(node)
-  if (!name) return
+  if (!name) {
+    diagnostics.push(
+      astProblem(node, "Dynamic HTML elements are not allowed", "LP_HTML_ELEMENT_FORBIDDEN"),
+    )
+    return
+  }
+  if (profile === "html/liquid@1") {
+    validateEmbeddedHtmlNode(node, diagnostics)
+    return
+  }
   if (name !== "mjml" && !name.startsWith("mj-")) {
     validateEmbeddedHtmlNode(node, diagnostics)
     return
@@ -514,11 +545,7 @@ function validateEmbeddedHtmlNode(node: AstNode, diagnostics: CodeMirrorDiagnost
   const policy = contract.embedded_html
   if (!policy.elements.includes(name as (typeof policy.elements)[number])) {
     diagnostics.push(
-      astProblem(
-        node,
-        `HTML element ${name} is not allowed in MJML content`,
-        "LP_HTML_ELEMENT_FORBIDDEN",
-      ),
+      astProblem(node, `HTML element ${name} is not allowed`, "LP_HTML_ELEMENT_FORBIDDEN"),
     )
     return
   }
@@ -539,14 +566,44 @@ function validateAttributes(
   const attributes = Array.isArray(node.attributes) ? (node.attributes as AstNode[]) : []
   for (const attribute of attributes) {
     const name = elementName(attribute)
-    if (!name) continue
+    if (!name) {
+      diagnostics.push(
+        astProblem(attribute, `Dynamic attributes are not allowed on ${element}`, code),
+      )
+      continue
+    }
     const dataAttribute = allowDataAttributes && /^data-[a-z0-9_.:-]+$/.test(name)
     if (name.startsWith("on") || (!allowed.has(name) && !dataAttribute)) {
       diagnostics.push(
         astProblem(attribute, `Attribute ${name} is not allowed on ${element}`, code),
       )
+    } else if (
+      allowDataAttributes &&
+      contract.embedded_html.url_attributes.includes(
+        name as (typeof contract.embedded_html.url_attributes)[number],
+      ) &&
+      !safeStaticUrlAttribute(attribute)
+    ) {
+      diagnostics.push(
+        astProblem(attribute, `Attribute ${name} contains an unsafe static URL`, code),
+      )
     }
   }
+}
+
+function safeStaticUrlAttribute(attribute: AstNode): boolean {
+  const values = Array.isArray(attribute.value) ? (attribute.value as AstNode[]) : []
+  if (values.some((value) => value.type !== "TextNode")) return true
+  const value = values
+    .map((item) => String(item.value ?? ""))
+    .join("")
+    .trim()
+  if (value === "" || /[\0-\x20\x7f]/.test(value)) return value === ""
+  if (value.startsWith("//") || value.startsWith("\\")) return false
+  if (value.startsWith("/") || value.startsWith("#") || value.startsWith("?")) return true
+  if (/^(?:https?|mailto|tel|cid):/i.test(value)) return true
+  const leadingSegment = value.split(/[/?#]/, 1)[0] ?? ""
+  return !/[:&\\]/.test(leadingSegment)
 }
 
 function astProblem(node: AstNode, message: string, code: string): CodeMirrorDiagnostic {

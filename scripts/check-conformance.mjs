@@ -14,7 +14,10 @@ if (fixtures.version !== 1 || !Array.isArray(fixtures.analysis) || fixtures.anal
 }
 
 const profileNames = Object.keys(generated.profiles).sort()
-if (JSON.stringify(profileNames) !== JSON.stringify(["email/mjml-liquid@1", "text/liquid@1"])) {
+if (
+  JSON.stringify(profileNames) !==
+  JSON.stringify(["email/mjml-liquid@1", "html/liquid@1", "text/liquid@1"])
+) {
   throw new Error(`unexpected profile set: ${profileNames.join(", ")}`)
 }
 

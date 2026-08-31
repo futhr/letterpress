@@ -9,7 +9,13 @@ import { inspectSentinelOutput } from "./sentinel"
 
 type JsonObject = Record<string, unknown>
 type Position = { start: number; end: number }
-type AstNode = JsonObject & { type?: string; name?: unknown; position?: Position }
+type AstNode = JsonObject & {
+  type?: string
+  name?: unknown
+  position?: Position
+  blockStartPosition?: Position
+  blockEndPosition?: Position
+}
 
 interface Request {
   id: string
@@ -250,6 +256,32 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     }
   }
 
+  if (profile === "html/liquid@1") {
+    const restored = restoreSentinels(
+      prepared.source,
+      prepared.sentinels,
+      source,
+      sourceHash,
+      documentVersion,
+      true,
+    )
+
+    return {
+      diagnostics: [...diagnostics, ...restored.diagnostics],
+      analysis: publicAnalysis(analysis),
+      compiled: {
+        html: restored.output,
+        text: null,
+        subject: preparedSubject.output,
+        source_map: {
+          ...prepared.sourceMap,
+          ...preparedSubject.sourceMap,
+        },
+      },
+      compiler: compilerVersions(),
+    }
+  }
+
   try {
     const mjmlOptions = {
       validationLevel: "strict",
@@ -419,10 +451,25 @@ function liquidSignature(source: string): string[] {
       allowUnclosedDocumentNode: false,
     }) as unknown as AstNode
     const signature: string[] = []
-    walk(ast, [], (node) => {
-      if (node.type === "LiquidVariableOutput") signature.push(`output:${rawLiquid(node)}`)
-      if (liquidTagTypes.has(String(node.type))) signature.push(`tag:${String(node.name ?? "")}`)
-      if (htmlElementTypes.has(String(node.type))) signature.push(`element:${elementName(node)}`)
+    walk(ast, [], (node, ancestors) => {
+      if (node.type === "LiquidVariableOutput") {
+        signature.push(`output:${sliceOptionalNode(node, node.position)}`)
+      }
+      if (liquidTagTypes.has(String(node.type))) {
+        signature.push(`tag-open:${sliceOptionalNode(node, node.blockStartPosition)}`)
+        signature.push(`tag-close:${sliceOptionalNode(node, node.blockEndPosition)}`)
+      }
+      if (node.type === "LiquidBranch" && node.name !== null) {
+        signature.push(`branch:${sliceOptionalNode(node, node.blockStartPosition)}`)
+      }
+      if (htmlElementTypes.has(String(node.type))) {
+        const path = [...ancestors, node]
+          .filter((item) => htmlElementTypes.has(String(item.type)))
+          .map(elementName)
+          .join("/")
+        signature.push(`element:${path}:open:${sliceOptionalNode(node, node.blockStartPosition)}`)
+        signature.push(`element:${path}:close:${sliceOptionalNode(node, node.blockEndPosition)}`)
+      }
     })
     return signature
   } catch {
@@ -583,7 +630,9 @@ function analyze(
         profileData,
         diagnostics,
       )
-      collectTranslationUnit(node, ancestors, source, sourceHash, translationUnits)
+      if (profile === "email/mjml-liquid@1") {
+        collectTranslationUnit(node, ancestors, source, sourceHash, translationUnits)
+      }
     }
     if (node.type === "LiquidVariableOutput") {
       const context = contextOverride ?? contextFor(node, ancestors, edge, profile)
@@ -614,7 +663,7 @@ function analyze(
     }
     if (liquidTagTypes.has(String(node.type))) {
       const name = String(node.name ?? "")
-      const structural = structuralContext(ancestors)
+      const structural = structuralContext(ancestors, profile)
       tags.push({ name, position: node.position ?? { start: 0, end: 0 }, structural })
       if (!contract.liquid.tags.includes(name)) {
         diagnostics.push(
@@ -636,6 +685,9 @@ function analyze(
 
   if (profile === "text/liquid@1") {
     collectTextTranslationUnit(ast, source, sourceHash, translationUnits)
+  }
+  if (profile === "html/liquid@1") {
+    collectHtmlTranslationUnit(ast, source, sourceHash, translationUnits)
   }
 
   const dependencies = lookupDependencies(ast)
@@ -732,6 +784,10 @@ function validateElement(
   profile: JsonObject | undefined,
   diagnostics: Diagnostic[],
 ): void {
+  if (profile?.kind === "html") {
+    validateEmbeddedHtml(node, source, sourceHash, documentVersion, diagnostics)
+    return
+  }
   if (profile?.kind !== "email") return
   const name = elementName(node)
   if (name !== "mjml" && !name.startsWith("mj-")) {
@@ -793,7 +849,7 @@ function validateEmbeddedHtml(
         "error",
         "LP_HTML_ELEMENT_FORBIDDEN",
         "letterpress-html",
-        `HTML element ${name} is not allowed in MJML content`,
+        `HTML element ${name} is not allowed`,
         { element: name },
       ),
     )
@@ -807,16 +863,31 @@ function validateEmbeddedHtml(
   const attributes = Array.isArray(node.attributes) ? (node.attributes as AstNode[]) : []
   for (const attribute of attributes) {
     const attributeNameValue = attributeName(attribute)
-    if (!attributeNameValue) continue
+    const range = (attribute.attributePosition as Position | undefined) ??
+      attribute.position ??
+      node.position ?? { start: 0, end: 0 }
+    if (!attributeNameValue) {
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_HTML_ATTRIBUTE_FORBIDDEN",
+          "letterpress-html",
+          `Dynamic HTML attributes are not allowed on ${name}`,
+          { attribute: "dynamic", element: name },
+        ),
+      )
+      continue
+    }
     const allowedDataAttribute =
       attributeNameValue.startsWith("data-") && /^data-[a-z0-9_.:-]+$/.test(attributeNameValue)
     if (
       attributeNameValue.startsWith("on") ||
       (!allowed.has(attributeNameValue) && !allowedDataAttribute)
     ) {
-      const range = (attribute.attributePosition as Position | undefined) ??
-        attribute.position ??
-        node.position ?? { start: 0, end: 0 }
       diagnostics.push(
         diagnostic(
           source,
@@ -827,6 +898,23 @@ function validateEmbeddedHtml(
           "LP_HTML_ATTRIBUTE_FORBIDDEN",
           "letterpress-html",
           `HTML attribute ${attributeNameValue} is not allowed on ${name}`,
+          { attribute: attributeNameValue, element: name },
+        ),
+      )
+    } else if (
+      policy.url_attributes.includes(attributeNameValue) &&
+      !safeStaticUrlAttribute(attribute)
+    ) {
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_HTML_ATTRIBUTE_FORBIDDEN",
+          "letterpress-html",
+          `HTML attribute ${attributeNameValue} contains an unsafe static URL`,
           { attribute: attributeNameValue, element: name },
         ),
       )
@@ -1080,7 +1168,11 @@ function wrapStructuralTags(
   replacements: { start: number; end: number; value: string }[],
 ): void {
   walk(ast, [], (node, ancestors) => {
-    if (!liquidTagTypes.has(String(node.type)) || !structuralContext(ancestors)) return
+    if (
+      !liquidTagTypes.has(String(node.type)) ||
+      !structuralContext(ancestors, "email/mjml-liquid@1")
+    )
+      return
     const start = node.blockStartPosition as Position | undefined
     const end = node.blockEndPosition as Position | undefined
     if (start && start.end > start.start)
@@ -1269,6 +1361,31 @@ function collectTextTranslationUnit(
   })
 }
 
+function collectHtmlTranslationUnit(
+  ast: AstNode,
+  source: string,
+  sourceHash: string,
+  units: JsonObject[],
+): void {
+  let hasHumanText = false
+
+  walk(ast, [], (node) => {
+    if (node.type === "TextNode" && String(node.value ?? "").trim() !== "") {
+      hasHumanText = true
+    }
+  })
+
+  if (!hasHumanText) return
+
+  units.push({
+    id: sha256(`html/liquid@1\0html\0${source}`).slice(0, 24),
+    context: "html_text",
+    source,
+    range: { start: 0, end: source.length },
+    source_hash: sourceHash,
+  })
+}
+
 function walk(
   node: AstNode,
   ancestors: AstNode[],
@@ -1399,6 +1516,21 @@ function attributeName(node: AstNode | undefined): string {
   return elementName(node)
 }
 
+function safeStaticUrlAttribute(attribute: AstNode): boolean {
+  const values = Array.isArray(attribute.value) ? (attribute.value as AstNode[]) : []
+  if (values.some((value) => value.type !== "TextNode")) return true
+  const value = values
+    .map((item) => String(item.value ?? ""))
+    .join("")
+    .trim()
+  if (value === "" || /[\0-\x20\x7f]/.test(value)) return value === ""
+  if (value.startsWith("//") || value.startsWith("\\")) return false
+  if (value.startsWith("/") || value.startsWith("#") || value.startsWith("?")) return true
+  if (/^(?:https?|mailto|tel|cid):/i.test(value)) return true
+  const leadingSegment = value.split(/[/?#]/, 1)[0] ?? ""
+  return !/[:&\\]/.test(leadingSegment)
+}
+
 function contextFor(_node: AstNode, ancestors: AstNode[], edge: string, profile: string): string {
   if (profile === "text/liquid@1") return "text"
   const parent = ancestors.at(-1)
@@ -1416,7 +1548,8 @@ function contextFor(_node: AstNode, ancestors: AstNode[], edge: string, profile:
   return "html_text"
 }
 
-function structuralContext(ancestors: AstNode[]): boolean {
+function structuralContext(ancestors: AstNode[], profile: string): boolean {
+  if (profile !== "email/mjml-liquid@1") return false
   const element = [...ancestors].reverse().find((item) => item.type === "HtmlElement")
   return contract.profiles["email/mjml-liquid@1"].structural_elements.includes(elementName(element))
 }
@@ -1516,6 +1649,10 @@ function applyReplacements(
 
 function sliceNode(node: AstNode, position: Position): string {
   return String(node.source ?? "").slice(position.start, position.end)
+}
+
+function sliceOptionalNode(node: AstNode, position: Position | undefined): string {
+  return position === undefined ? "" : sliceNode(node, position)
 }
 
 function findVariablePosition(uses: VariableUse[], name: string): Position {

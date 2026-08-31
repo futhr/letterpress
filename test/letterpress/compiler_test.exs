@@ -56,6 +56,69 @@ defmodule Letterpress.CompilerTest do
     assert artifact.text =~ ~s(letterpress_escape: "text")
   end
 
+  test "compiles bounded HTML fragments with final output-context escaping" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "action_url" => %{"type" => "url", "context" => "url"},
+        "name" => %{"type" => "string", "context" => "html_text"}
+      }
+    }
+
+    source = ~s(<p>Hello <strong>{{ name }}</strong>. <a href="{{ action_url }}">Open</a></p>)
+
+    assert {:ok, artifact, []} = Letterpress.compile("html/liquid@1", source, schema)
+    assert artifact.profile == "html/liquid@1"
+    assert artifact.text == nil
+    assert artifact.subject == nil
+    assert artifact.html =~ ~s(letterpress_escape: "html_text")
+    assert artifact.html =~ ~s(letterpress_escape: "url")
+
+    assert {:ok, %{html: html}} =
+             Letterpress.render(artifact, %{
+               "name" => "<script>alert(1)</script>",
+               "action_url" => "https://example.test/?a=1&b=2"
+             })
+
+    assert html =~ "&lt;script&gt;alert(1)&lt;/script&gt;"
+    assert html =~ "https://example.test/?a=1&amp;b=2"
+
+    assert [%{"context" => "html_text"}] = artifact.translation_units
+  end
+
+  test "rejects unsafe HTML fragment elements and attributes" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    assert {:error, diagnostics} =
+             Letterpress.compile(
+               "html/liquid@1",
+               ~s|<p onclick="steal()">safe</p><script>alert(1)</script>|,
+               schema
+             )
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_HTML_ATTRIBUTE_FORBIDDEN"))
+    assert Enum.any?(diagnostics, &(&1.code == "LP_HTML_ELEMENT_FORBIDDEN"))
+  end
+
+  test "rejects dynamic attributes and unsafe static HTML URLs" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "attribute" => %{"type" => "string", "context" => "html_attribute"}
+      }
+    }
+
+    for source <- [
+          ~s|<p {{ attribute }}>unsafe</p>|,
+          ~s|<a href="javascript:alert(1)">unsafe</a>|,
+          ~s|<a href="//example.test/steal">unsafe</a>|,
+          ~s|<a href="javascript&#58;alert(1)">unsafe</a>|
+        ] do
+      assert {:error, diagnostics} = Letterpress.compile("html/liquid@1", source, schema)
+      assert Enum.any?(diagnostics, &(&1.code == "LP_HTML_ATTRIBUTE_FORBIDDEN"))
+    end
+  end
+
   test "validates and renders an email text alternative atomically" do
     assert {:ok, artifact, diagnostics} =
              Letterpress.compile(

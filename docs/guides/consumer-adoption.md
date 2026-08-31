@@ -10,10 +10,12 @@ Adopt Letterpress at the template boundary, not inside a provider adapter.
 6. Keep provider policy, tenancy, authorization, retries, and audit records in
    the consumer.
 
-Legacy Mustache, Handlebars, EEx, or arbitrary HTML are conversion inputs, not
-runtime profiles. A migration adapter should fail records it cannot convert,
-surface diagnostics for review, and pass successful output through the normal
-compiler. It must not add a compatibility mode to Letterpress.
+Legacy Mustache, Handlebars, EEx, or unrestricted HTML are conversion inputs,
+not runtime profiles. Bounded HTML fragments may use `html/liquid@1` only after
+they satisfy its element, attribute, Liquid, and URL rules. A migration adapter
+should fail records it cannot convert, surface diagnostics for review, and pass
+successful output through the normal compiler. It must not add a compatibility
+mode to Letterpress.
 
 Use an expand/backfill/contract migration when adding artifacts to a live
 system. Old and new application versions must coexist until every active

@@ -19,7 +19,13 @@ defmodule Letterpress.PublicAPITest do
 
   test "exposes the versioned profiles and generated contract" do
     assert Letterpress.version() == "0.1.0"
-    assert Letterpress.profiles() == ["email/mjml-liquid@1", "text/liquid@1"]
+
+    assert Letterpress.profiles() == [
+             "email/mjml-liquid@1",
+             "html/liquid@1",
+             "text/liquid@1"
+           ]
+
     assert Letterpress.contract()["contract_version"] == 1
     assert {:ok, %{"kind" => "email"}} = Letterpress.Profile.fetch("email/mjml-liquid@1")
     assert :error = Letterpress.Profile.fetch("unknown")
@@ -54,6 +60,11 @@ defmodule Letterpress.PublicAPITest do
 
     assert_error_code(
       Letterpress.compile("text/liquid@1", text_source(), text_schema(), text: "duplicate"),
+      "LP_OPTIONS_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.compile("html/liquid@1", "<p>Hello</p>", text_schema(), subject: "duplicate"),
       "LP_OPTIONS_INVALID"
     )
 
