@@ -29,6 +29,7 @@ const schema: VariableSchema = {
     color: { type: "string", phase: "compile", context: "color" },
     css: { type: "string", phase: "compile", context: "css" },
     attribute: { type: "string", context: "html_attribute" },
+    "campaign.csd_registered?": { type: "boolean", context: "text" },
   },
 }
 
@@ -152,6 +153,9 @@ describe("Letterpress language contract", () => {
 
   it("offers only contract tags, filters, variables, MJML children, and attributes", () => {
     expect(labels("{{ user.na", "email/mjml-liquid@1")).toContain("user.name")
+    expect(labels("{{ campaign.csd_registered?", "email/mjml-liquid@1")).toContain(
+      "campaign.csd_registered?",
+    )
     expect(labels("{{ user.na", "email/mjml-liquid@1")).not.toContain("url")
     expect(labels("{{ name | up", "email/mjml-liquid@1")).toContain("upcase")
     expect(labels("{% i", "email/mjml-liquid@1")).toContain("if")

@@ -80,6 +80,25 @@ defmodule Letterpress.PublicAPITest do
     assert {:error, :invalid_artifact} = Letterpress.decode_artifact(:not_an_artifact)
   end
 
+  test "compiles and renders predicate-style variable names" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "campaign.csd_registered?" => %{"type" => "boolean", "context" => "text"}
+      }
+    }
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile(
+               "text/liquid@1",
+               "CSD registered: {{ campaign.csd_registered? }}",
+               schema
+             )
+
+    assert {:ok, %{text: "CSD registered: true"}} =
+             Letterpress.render(artifact, %{"campaign" => %{"csd_registered?" => true}})
+  end
+
   test "translation extraction returns parser diagnostics for invalid source" do
     assert {:error, diagnostics} =
              Letterpress.extract_translation_units(

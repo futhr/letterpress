@@ -158,7 +158,7 @@ function attributeValues(rule: string): readonly string[] | null {
 
 function completionSource(config: LanguageConfig) {
   return (context: CompletionContext): CompletionResult | null => {
-    const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_.-]*/)
+    const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_.-]*\??/)
     if (!context.explicit && !word) return null
     const from = word?.from ?? context.pos
     return { from, options: completionsAt(context.state.doc.toString(), context.pos, config) }
@@ -205,7 +205,7 @@ function variableCompletions(
       const context = definition.context ?? "text"
       return (
         (requirement.phase === undefined || phase === requirement.phase) &&
-        (requirement.context === undefined || context === requirement.context)
+        (requirement.context === undefined || compatibleContext(context, requirement.context))
       )
     })
     .sort(([left], [right]) => left.localeCompare(right))

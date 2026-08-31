@@ -135,6 +135,34 @@ defmodule Letterpress.SchemaTest do
     end
   end
 
+  test "accepts predicate-style leaf names without widening identifier punctuation" do
+    assert {:ok, normalized} =
+             Schema.normalize(
+               schema_with("campaign.csd_registered?", %{
+                 "type" => "boolean",
+                 "context" => "text"
+               })
+             )
+
+    assert normalized["variables"]["campaign.csd_registered?"]["type"] == "boolean"
+
+    assert {:ok, nested} =
+             Schema.normalize(
+               schema_with("campaign", %{
+                 "type" => "object",
+                 "properties" => %{"csd_registered?" => %{"type" => "boolean"}}
+               })
+             )
+
+    assert nested["variables"]["campaign"]["properties"]["csd_registered?"]["type"] ==
+             "boolean"
+
+    for name <- ["campaign?.registered", "campaign.csd-registered?", "campaign.ready??"] do
+      assert {:error, [%{code: "LP_SCHEMA_NAME"}]} =
+               Schema.normalize(schema_with(name, %{"type" => "boolean"}))
+    end
+  end
+
   test "enforces variable count, nested names, fields, shape, and depth" do
     oversized =
       Map.new(0..500, fn index -> {"value_#{index}", %{"type" => "string"}} end)

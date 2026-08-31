@@ -22,8 +22,8 @@ defmodule Letterpress.Schema do
 
   alias Letterpress.{CanonicalJSON, Contract, Diagnostic, JSON}
 
-  @name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/
-  @segment_regex ~r/^[A-Za-z_][A-Za-z0-9_]*$/
+  @name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\??$/
+  @segment_regex ~r/^[A-Za-z_][A-Za-z0-9_]*\??$/
   @allowed_fields ~w(type phase context required default description sensitive items properties)
   @nested_fields ~w(type required default description sensitive items properties)
 

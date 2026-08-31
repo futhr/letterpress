@@ -96,7 +96,7 @@ variables. Every variable declares:
 
 | Field | Contract |
 |---|---|
-| `name` | dotted identifier segments matching `[A-Za-z_][A-Za-z0-9_]*` |
+| `name` | dotted identifier segments matching `[A-Za-z_][A-Za-z0-9_]*`; the final segment may end in `?` for predicate-style keys |
 | `type` | `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `url`, `email`, `phone`, `object`, or `list` |
 | `phase` | `compile` or `delivery` |
 | `context` | `text`, `html_text`, `html_attribute`, `url`, `color`, `css`, `subject`, or `none` |
