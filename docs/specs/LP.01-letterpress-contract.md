@@ -153,16 +153,19 @@ For `email/mjml-liquid@1` the authoritative pipeline is:
    MJML without exposing file/plugin features;
 7. compile in `validationLevel: strict` with the pinned official MJML compiler
    and `sanitizeStyles` enabled;
-8. prove each sentinel survived in every compiler-emitted occurrence and only
-   in its allowed output context (MJML may intentionally duplicate head data);
-9. restore normalized Liquid expressions with an internal final context filter;
+8. prove that each sentinel's compiler-emitted occurrence count and output
+   contexts exactly match a modeled transformation (MJML intentionally emits
+   `mj-title` into title text and the document's `aria-label` attribute);
+9. restore every emitted occurrence with a normalized Liquid expression and
+   the internal final filter for that occurrence's actual output context;
 10. validate the HTML Liquid artifact and source map;
 11. run compatibility and accessibility lint;
 12. canonicalize and hash the artifact.
 
 Any sentinel collision, loss, unexpected duplication outside a compiler-known
-duplication site, relocation to a weaker context, or unmapped compiler error
-fails closed.
+duplication site, unmodeled relocation, or unmapped compiler error fails
+closed. A modeled duplication spanning multiple contexts receives a distinct
+final context filter at each output location.
 
 `text/liquid@1` runs the same Liquid/schema analysis without MJML compilation.
 

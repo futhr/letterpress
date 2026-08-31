@@ -32,6 +32,10 @@ defmodule Letterpress.CompilerTest do
     assert first.html =~ "#3366ff"
     assert first.subject =~ ~s(letterpress_escape: "subject")
     assert first.text =~ ~s(letterpress_escape: "text")
+    assert first.html =~ ~s(<title>{{ title | letterpress_escape: "html_text" }}</title>)
+
+    assert first.html =~
+             ~s(aria-label="{{ title | letterpress_escape: "html_attribute" }}")
 
     assert {:ok, second, _} =
              Letterpress.compile(

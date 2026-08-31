@@ -11,7 +11,7 @@
   "scripts": {
     "build": "pnpm build:compiler && pnpm -r build",
     "build:compiler": "node scripts/build-compiler.mjs",
-    "test": "pnpm -r test",
+    "test": "vitest run compiler && pnpm -r test",
     "typecheck": "tsc -p compiler/tsconfig.json --noEmit && pnpm -r typecheck",
     "lint": "biome check --error-on-warnings .",
     "format": "biome check --write --unsafe .",

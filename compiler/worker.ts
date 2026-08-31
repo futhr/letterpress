@@ -5,6 +5,7 @@ import liquidPlugin from "@shopify/prettier-plugin-liquid"
 import mjml2html from "mjml"
 import prettier from "prettier"
 import contract from "../generated/letterpress-v1.json"
+import { inspectSentinelOutput } from "./sentinel"
 
 type JsonObject = Record<string, unknown>
 type Position = { start: number; end: number }
@@ -43,6 +44,7 @@ interface VariableUse {
     name: string
     collection: string
   }
+  outputContexts: string[]
 }
 
 interface VariableDependency {
@@ -61,6 +63,12 @@ interface Analysis {
   dependencies: VariableDependency[]
   tags: { name: string; position: Position; structural: boolean }[]
   translation_units: JsonObject[]
+}
+
+interface Sentinel {
+  raw: string
+  sourceContext: string
+  outputContexts: string[]
 }
 
 const htmlElementTypes = new Set([
@@ -277,6 +285,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
       source,
       sourceHash,
       documentVersion,
+      true,
     )
     return {
       diagnostics: [...diagnostics, ...restored.diagnostics],
@@ -589,6 +598,7 @@ function analyze(
         filters,
         local: localVariable(name, ancestors),
         ...(binding === undefined ? {} : { binding }),
+        outputContexts: compilerOutputContexts(context, ancestors),
       })
       validateLiquidUse(
         name,
@@ -981,12 +991,12 @@ function prepareSource(
   documentVersion: number,
 ): {
   source: string
-  sentinels: Map<string, string>
+  sentinels: Map<string, Sentinel>
   diagnostics: Diagnostic[]
   sourceMap: JsonObject
 } {
   const replacements: { start: number; end: number; value: string }[] = []
-  const sentinels = new Map<string, string>()
+  const sentinels = new Map<string, Sentinel>()
   const diagnostics: Diagnostic[] = []
   const sourceMap: JsonObject = {}
 
@@ -1052,8 +1062,11 @@ function prepareSource(
       )
       return
     }
-    const expression = `{{ ${use.raw} | letterpress_escape: "${use.context}" }}`
-    sentinels.set(token, expression)
+    sentinels.set(token, {
+      raw: use.raw,
+      sourceContext: use.context,
+      outputContexts: use.outputContexts,
+    })
     replacements.push({ ...use.position, value: token })
     sourceMap[token] = { source: use.position, variable: use.name, context: use.context }
   })
@@ -1088,16 +1101,28 @@ function wrapStructuralTags(
 
 function restoreSentinels(
   output: string,
-  sentinels: Map<string, string>,
+  sentinels: Map<string, Sentinel>,
   source: string,
   sourceHash: string,
   documentVersion: number,
+  verifyOutputContext = false,
 ): { output: string; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = []
   let restored = output
-  for (const [token, expression] of sentinels) {
+  const inspection = verifyOutputContext
+    ? inspectSentinelOutput(
+        output,
+        new Map([...sentinels].map(([token, sentinel]) => [token, sentinel.outputContexts])),
+      )
+    : null
+  const contextIssues = new Map((inspection?.issues ?? []).map((issue) => [issue.token, issue]))
+  const replacements: { start: number; end: number; value: string }[] = []
+
+  for (const [token, sentinel] of sentinels) {
     const count = restored.split(token).length - 1
-    if (count === 0) {
+    const issue = contextIssues.get(token)
+    const expectedCount = verifyOutputContext ? sentinel.outputContexts.length : 1
+    if (count !== expectedCount || issue) {
       diagnostics.push(
         diagnostic(
           source,
@@ -1107,15 +1132,42 @@ function restoreSentinels(
           "error",
           "LP_SENTINEL_SURVIVAL",
           "letterpress-compiler",
-          "Compiler did not preserve an expression sentinel",
-          { count },
+          "Compiler did not preserve an expression sentinel in its modeled output contexts",
+          {
+            count,
+            expected_contexts: verifyOutputContext
+              ? sentinel.outputContexts
+              : [sentinel.sourceContext],
+            actual_contexts: issue?.contexts ?? [],
+          },
         ),
       )
     } else {
-      restored = restored.replaceAll(token, expression)
+      if (verifyOutputContext) {
+        for (const occurrence of inspection?.occurrences.get(token) ?? []) {
+          replacements.push({
+            start: occurrence.start,
+            end: occurrence.end,
+            value: `{{ ${sentinel.raw} | letterpress_escape: "${occurrence.context}" }}`,
+          })
+        }
+      } else {
+        restored = restored.replaceAll(
+          token,
+          `{{ ${sentinel.raw} | letterpress_escape: "${sentinel.sourceContext}" }}`,
+        )
+      }
     }
   }
+  if (verifyOutputContext && diagnostics.length === 0)
+    restored = applyReplacements(output, replacements)
   return { output: restored, diagnostics }
+}
+
+function compilerOutputContexts(context: string, ancestors: AstNode[]): string[] {
+  const element = [...ancestors].reverse().find((ancestor) => ancestor.type === "HtmlElement")
+  if (elementName(element) === "mj-title") return ["html_text", "html_attribute"]
+  return [context]
 }
 
 function prepareAuxiliary(
