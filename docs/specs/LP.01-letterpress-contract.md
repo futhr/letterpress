@@ -326,11 +326,25 @@ format hooks, and provides configurable line numbers, fold/lint gutters,
 matching, indentation, search, completion, line wrapping, and placeholders. It
 does not call a backend or decide UI layout.
 
-The normal theming boundary is a plain `LetterpressEditorTheme` value. The
-component constructs CodeMirror theme and highlight extensions inside its own
-runtime so linked local packages cannot create duplicate `@codemirror/state`
-identities. Raw `Extension` values remain an advanced escape hatch; consumers
-using that escape hatch must deduplicate CodeMirror peer dependencies.
+The normal theming boundary is a plain `LetterpressEditorTheme` value containing
+complete `light` and `dark` palettes. The package ships an accessible reference
+pair and a typed constructor that deep-merges consumer overrides into that
+pair. A host selects the active palette through the `colorScheme` prop; changing
+the prop reconfigures CodeMirror without recreating editor state or history.
+
+Every editor and syntax color accepts any valid CSS color, including custom
+properties and `color-mix()`. This lets a host map Letterpress directly onto its
+semantic design tokens without forking the component. The reference palettes
+use `--letterpress-editor-*` custom properties with standalone fallbacks, so
+they also serve as a complete override template. Typography is part of each
+palette and has the same override boundary. Letterpress must not depend on a
+host theme class, token name, brand, or mode library.
+
+The component constructs CodeMirror theme and highlight extensions inside its
+own runtime so linked local packages cannot create duplicate
+`@codemirror/state` identities. Raw `Extension` values remain an advanced
+escape hatch; consumers using that escape hatch must deduplicate CodeMirror
+peer dependencies.
 
 Both packages declare broad peer ranges for CodeMirror/Svelte and ship ESM,
 types, source maps, export maps, provenance-ready package metadata, and no

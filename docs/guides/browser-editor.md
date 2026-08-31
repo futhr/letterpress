@@ -16,10 +16,17 @@ completion, context-aware diagnostics, and deterministic formatting.
 The Svelte component owns CodeMirror lifecycle and standard editor behavior:
 line numbers, folding, lint markers, matching, indentation, completion, search,
 line wrapping, save/format keys, and controlled updates. The host owns layout,
-theme, persistence, backend calls, draft state, AI actions, and publication.
-Pass theme colors through the plain `LetterpressEditorTheme` contract. The
-component creates CodeMirror extensions internally, which keeps linked local
-consumers on one runtime identity. Reserve raw `extensions` for advanced
+persistence, backend calls, draft state, AI actions, and publication.
+
+Letterpress supplies a complete light/dark reference theme. Use it directly,
+override its `--letterpress-editor-*` custom properties, or create a paired host
+theme with `createLetterpressEditorTheme`. Palette values may reference host CSS
+variables, which is the preferred way to inherit a product design system.
+Pass the current mode through `colorScheme`; mode changes preserve document
+history and selection.
+
+The component creates CodeMirror extensions internally, which keeps linked
+local consumers on one runtime identity. Reserve raw `extensions` for advanced
 behavior and deduplicate CodeMirror peers when using them.
 Pass backend diagnostics together with the source hash and document version;
 the extension drops stale responses so an older validation request cannot
@@ -33,6 +40,7 @@ annotate newer text.
   diagnostics={validation.diagnostics}
   sourceHash={validation.source_hash}
   documentVersion={validation.document_version}
+  colorScheme="dark"
   theme={editorTheme}
   onSave={() => saveDraft(source)}
 />
