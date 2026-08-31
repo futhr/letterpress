@@ -138,6 +138,22 @@ describe("LetterpressEditor", () => {
     expect(document.querySelector(".cm-placeholder")?.textContent).toBe("Write a notification")
   })
 
+  it("lets preprocessing hosts disable only client diagnostics", async () => {
+    const component = mount(LetterpressEditor, {
+      target: document.body,
+      props: {
+        source: "{{# host_slot }}",
+        profile: "text/liquid@1",
+        schema,
+        clientDiagnostics: false,
+      },
+    })
+    mounted.push(component)
+    await tick()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(document.querySelector(".cm-lintRange-error")).toBeNull()
+  })
+
   it("constructs the selected palette internally from the paired theme contract", async () => {
     const component = mount(LetterpressEditor, {
       target: document.body,

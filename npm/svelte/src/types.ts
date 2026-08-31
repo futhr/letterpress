@@ -8,6 +8,7 @@ export interface LetterpressEditorProps {
   profile: Profile
   schema: VariableSchema
   diagnostics?: readonly ServerDiagnostic[]
+  clientDiagnostics?: boolean
   documentVersion?: number
   sourceHash?: string
   extensions?: readonly Extension[]

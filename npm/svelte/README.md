@@ -40,3 +40,8 @@ peer-deduplicated hosts.
 
 The component does not own product layout. Place it in the host product's own
 container and map the paired theme to that product's semantic tokens.
+
+Hosts that edit a preprocessing language may set `clientDiagnostics={false}`
+and pass diagnostics from the backend after expansion. Grammar, highlighting,
+completion, formatting, and freshness-filtered server diagnostics remain
+enabled. Strict client diagnostics stay enabled by default.

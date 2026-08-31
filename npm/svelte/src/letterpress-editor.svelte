@@ -33,6 +33,7 @@ let {
   profile,
   schema,
   diagnostics = [],
+  clientDiagnostics = true,
   documentVersion,
   sourceHash,
   extensions = [],
@@ -67,6 +68,7 @@ function languageExtension(): Extension {
   return letterpressLanguage({
     profile,
     schema,
+    clientDiagnostics,
     serverDiagnostics: diagnostics,
     ...(documentVersion === undefined ? {} : { documentVersion }),
     ...(sourceHash === undefined ? {} : { sourceHash }),

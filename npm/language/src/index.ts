@@ -58,6 +58,7 @@ export interface ServerDiagnostic {
 export interface LanguageConfig {
   profile: Profile
   schema: VariableSchema
+  clientDiagnostics?: boolean
   serverDiagnostics?: readonly ServerDiagnostic[]
   documentVersion?: number
   sourceHash?: string
@@ -80,7 +81,7 @@ export function letterpressLanguage(config: LanguageConfig): Extension {
     autocompletion({ override: [completionSource(config)] }),
     linter(
       (view) => [
-        ...localDiagnostics(view, config),
+        ...(config.clientDiagnostics === false ? [] : localDiagnostics(view, config)),
         ...mapServerDiagnostics(view, config.serverDiagnostics ?? [], config),
       ],
       { delay: config.lintDelay ?? 250 },
