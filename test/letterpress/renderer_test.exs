@@ -7,6 +7,9 @@ defmodule Letterpress.RendererTest do
 
   alias Letterpress.{Artifact, CanonicalJSON}
 
+  doctest Letterpress.Renderer
+  doctest Letterpress.Renderer.ForTag
+
   setup do
     {:ok, email, _} =
       Letterpress.compile(
@@ -64,13 +67,13 @@ defmodule Letterpress.RendererTest do
   end
 
   test "rendering does not depend on compiler process availability", %{text: artifact} do
-    :ok = Supervisor.terminate_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor)
+    :ok = Supervisor.terminate_child(Letterpress.TestSupervisor, Letterpress.Compiler.Pool)
 
     assert {:ok, %{text: "Hello Ada, code 123"}} =
              Letterpress.render(artifact, %{"name" => "Ada", "code" => "123"})
 
     assert {:ok, _} =
-             Supervisor.restart_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor)
+             Supervisor.restart_child(Letterpress.TestSupervisor, Letterpress.Compiler.Pool)
   end
 
   test "rejects undeclared values and malformed runtime options", %{text: artifact} do
@@ -84,6 +87,19 @@ defmodule Letterpress.RendererTest do
 
     assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} =
              Letterpress.render(artifact, values, timeout: 0)
+  end
+
+  test "keeps URL and subject limits local to each render call", %{email: artifact} do
+    values = email_values()
+
+    assert {:ok, rendered} = Letterpress.render(artifact, values)
+    assert rendered.html =~ "https://example.test/account"
+
+    assert {:error, [%{code: "LP_RENDER_LIQUID"}]} =
+             Letterpress.render(artifact, values, allowed_url_schemes: ~w(mailto tel))
+
+    assert {:error, [%{code: "LP_RENDER_LIQUID"}]} =
+             Letterpress.render(artifact, values, subject_max_bytes: 5)
   end
 
   test "bounds nested Liquid loops independently of input collection limits" do
@@ -157,7 +173,9 @@ defmodule Letterpress.RendererTest do
       Map.put(
         map,
         "content_sha256",
-        map |> Map.delete("content_sha256") |> CanonicalJSON.hash()
+        map
+        |> Map.delete("content_sha256")
+        |> CanonicalJSON.hash()
       )
 
     assert {:error, [%{code: "LP_ARTIFACT_LIQUID"}]} = Letterpress.render(forged, %{})

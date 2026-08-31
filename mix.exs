@@ -25,7 +25,7 @@ defmodule Letterpress.MixProject do
   end
 
   def application do
-    [mod: {Letterpress.Application, []}, extra_applications: [:crypto, :logger]]
+    [extra_applications: [:crypto, :logger]]
   end
 
   def cli do

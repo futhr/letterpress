@@ -177,15 +177,16 @@ Requirements:
 
 - Node 22 or newer is supported; the exact Node, MJML, parser, and bundle
   versions are stamped into artifacts.
-- worker count, request timeout, queue timeout, and maximum frame size are
-  application configuration with conservative defaults;
+- the host owns compiler supervision; pool size and maximum frame size are
+  child-spec options, while the request timeout and pool selection are
+  per-call options with conservative defaults;
 - a crashed, malformed, oversized, or late worker response fails the request,
   restarts only that worker, and never desynchronizes later requests;
 - source and variable values are excluded from logs and telemetry;
 - the bundle does not use the network, shell, dynamic import, includes, or host
   file access;
-- deployments that only render precompiled artifacts may disable the compiler
-  child and do not require Node.
+- deployments that only render precompiled artifacts omit the compiler child
+  and do not require Node.
 
 Node permission mode may reduce accidental access but is not a security
 sandbox. Hosts still isolate compiler workloads with normal process/container
@@ -439,7 +440,7 @@ A dynamic-authoring host:
 4. renders the stored artifact in delivery workers;
 5. keeps the previous pointer for rollback;
 6. backfills existing published revisions before removing legacy rendering;
-7. may disable compiler supervision on delivery-only nodes.
+7. omits compiler supervision on delivery-only nodes.
 
 A static-template host may compile in CI/build and ship artifacts, avoiding Node
 in production entirely.

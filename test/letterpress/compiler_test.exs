@@ -9,6 +9,10 @@ defmodule Letterpress.CompilerTest do
   alias Letterpress.{Artifact, Compiler}
   alias Letterpress.Compiler.Worker
 
+  doctest Letterpress.Compiler
+  doctest Letterpress.Compiler.Supervisor
+  doctest Letterpress.Compiler.Worker
+
   test "compiles deterministic email artifacts through the supervised official worker" do
     assert {:ok, first, diagnostics} =
              Letterpress.compile(
@@ -208,11 +212,11 @@ defmodule Letterpress.CompilerTest do
   end
 
   test "a killed compiler worker is supervised and later requests recover" do
-    [{pid, _}] = Registry.lookup(Letterpress.Compiler.Registry, 0)
+    [{pid, _}] = Registry.lookup(Letterpress.Compiler.Pool, 0)
     Process.exit(pid, :kill)
 
     assert eventually(fn ->
-             case Registry.lookup(Letterpress.Compiler.Registry, 0) do
+             case Registry.lookup(Letterpress.Compiler.Pool, 0) do
                [{replacement, _}] -> replacement != pid and Process.alive?(replacement)
                _ -> false
              end
@@ -230,43 +234,43 @@ defmodule Letterpress.CompilerTest do
     assert once == twice
   end
 
-  test "reports ready, disabled, and unavailable compiler states" do
+  test "reports ready and unavailable compiler states" do
     assert Compiler.available?()
     assert Compiler.status() == :ready
 
-    :ok = Supervisor.terminate_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor)
+    :ok = Supervisor.terminate_child(Letterpress.TestSupervisor, Letterpress.Compiler.Pool)
     refute Compiler.available?()
     assert Compiler.status() == :unavailable
     assert {:error, :compiler_unavailable} = Compiler.request(:contract, %{})
 
-    previous = Application.get_env(:letterpress, :compiler_enabled)
-    Application.put_env(:letterpress, :compiler_enabled, false)
-    assert Compiler.status() == :disabled
-    assert {:error, :compiler_disabled} = Compiler.request(:contract, %{})
-
-    Application.put_env(:letterpress, :compiler_enabled, nil)
-    assert Compiler.status() == :disabled
-    assert {:error, :compiler_disabled} = Compiler.request(:contract, %{})
-
     on_exit(fn ->
-      Application.put_env(:letterpress, :compiler_enabled, previous)
-
-      case Supervisor.restart_child(Letterpress.Supervisor, Letterpress.Compiler.Supervisor) do
+      case Supervisor.restart_child(Letterpress.TestSupervisor, Letterpress.Compiler.Pool) do
         {:ok, _} -> :ok
         {:ok, _, _} -> :ok
       end
     end)
   end
 
-  test "normalizes invalid worker-count configuration at the status boundary" do
-    previous = Application.get_env(:letterpress, :compiler_pool_size)
+  test "supports independently named caller-owned compiler pools" do
+    pool = Letterpress.Test.SecondCompilerPool
 
-    on_exit(fn -> Application.put_env(:letterpress, :compiler_pool_size, previous) end)
+    start_supervised!({Letterpress.Compiler.Supervisor, pool: pool, pool_size: 1})
 
-    for configured <- [0, -1, nil, "one"] do
-      Application.put_env(:letterpress, :compiler_pool_size, configured)
-      assert Compiler.available?()
-      assert Compiler.status() == :ready
+    assert Compiler.status(pool: pool) == :ready
+    assert {:ok, contract} = Compiler.request(:contract, %{}, pool: pool)
+    assert contract["contract_version"] == 1
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile("text/liquid@1", text_source(), text_schema(),
+               compiler_pool: pool
+             )
+
+    assert artifact.profile == "text/liquid@1"
+  end
+
+  test "rejects invalid compiler child options" do
+    assert_raise NimbleOptions.ValidationError, fn ->
+      Letterpress.Compiler.Supervisor.child_spec(pool_size: 0)
     end
   end
 
@@ -368,19 +372,18 @@ defmodule Letterpress.CompilerTest do
 
   @tag capture_log: true
   test "a worker timeout fails closed and supervision restores service" do
-    previous = Application.get_env(:letterpress, :compiler_timeout)
-    Application.put_env(:letterpress, :compiler_timeout, 1)
-
-    on_exit(fn -> Application.put_env(:letterpress, :compiler_timeout, previous) end)
-
     parent = self()
 
     capture_log(fn ->
       result =
-        Compiler.request(:format, %{
-          "profile" => "email/mjml-liquid@1",
-          "source" => String.duplicate("<mj-text>x</mj-text>", 20_000)
-        })
+        Compiler.request(
+          :format,
+          %{
+            "profile" => "email/mjml-liquid@1",
+            "source" => String.duplicate("<mj-text>x</mj-text>", 20_000)
+          },
+          timeout: 1
+        )
 
       send(parent, {:timeout_result, result})
       Process.sleep(20)
@@ -390,7 +393,6 @@ defmodule Letterpress.CompilerTest do
 
     assert result in [{:error, :compiler_timeout}, {:error, :compiler_unavailable}]
 
-    Application.put_env(:letterpress, :compiler_timeout, previous)
     assert eventually(fn -> match?({:ok, _}, Compiler.request(:contract, %{})) end)
   end
 

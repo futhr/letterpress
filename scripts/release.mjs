@@ -384,6 +384,7 @@ function smokeHexArtifact(sourceRoot, output, manifest) {
       smoke,
       `schema = %{"version" => 1, "variables" => %{"name" => %{"type" => "string", "context" => "html_text"}}}
 source = "<mjml><mj-body><mj-section><mj-column><mj-text>Hello {{ name }}</mj-text></mj-column></mj-section></mj-body></mjml>"
+{:ok, _supervisor} = Supervisor.start_link([{Letterpress.Compiler.Supervisor, pool_size: 1}], strategy: :one_for_one)
 {:ok, artifact, []} = Letterpress.compile("email/mjml-liquid@1", source, schema)
 {:ok, %{html: html}} = Letterpress.render(artifact, %{"name" => "Ada"})
 true = String.contains?(html, "Hello Ada")

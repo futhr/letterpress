@@ -5,6 +5,8 @@ defmodule Letterpress.Renderer.FiltersTest do
 
   alias Letterpress.Renderer.Filters
 
+  doctest Letterpress.Renderer.Filters
+
   test "escapes HTML text and attributes by context" do
     assert {:ok, "&lt;a&gt;&amp;"} = Filters.escape("<a>&", "html_text")
     assert {:ok, "&quot;&#39;&amp;"} = Filters.escape("\"'&", "html_attribute")

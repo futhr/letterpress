@@ -1,59 +1,72 @@
 defmodule Letterpress.Compiler do
   @moduledoc """
-  Routes authoring requests to the supervised bundled Node worker pool.
+  Routes authoring requests to a caller-owned compiler pool.
 
-  The framed protocol and worker lifecycle are private. Public callers receive
-  tagged errors and never observe port messages or worker process identities.
+  Start `Letterpress.Compiler.Supervisor` in the host application's supervision
+  tree before calling authoring functions. The framed protocol and worker
+  lifecycle remain private; callers receive tagged errors and never observe
+  port messages or worker process identities.
   """
 
   alias Letterpress.Compiler.Worker
 
+  @typedoc "An operation implemented by the bundled compiler protocol."
   @type operation ::
           :discover | :analyze | :compile | :format | :apply_translations | :contract
 
-  @doc "Returns whether at least one compiler worker is available."
-  @spec available?() :: boolean()
-  def available?, do: available_indices() != []
+  @default_pool Letterpress.Compiler.Pool
+  @default_timeout 15_000
 
-  @doc "Executes a bounded compiler operation."
-  @spec request(operation(), map()) :: {:ok, map()} | {:error, term()}
-  def request(operation, payload) when is_atom(operation) and is_map(payload) do
-    case available_indices() do
+  @doc """
+  Returns whether `:pool` has at least one registered compiler worker.
+
+  The default pool is `#{inspect(@default_pool)}`.
+  """
+  @spec available?(keyword()) :: boolean()
+  def available?(opts \\ []), do: available_indices(pool_name(opts)) != []
+
+  @doc """
+  Executes a bounded operation in a compiler pool.
+
+  ## Options
+
+    * `:pool` - registered compiler pool; defaults to
+      `#{inspect(@default_pool)}`
+    * `:timeout` - request deadline in milliseconds; defaults to
+      `#{@default_timeout}`
+
+  Most consumers should call the facade functions in `Letterpress`.
+  """
+  @spec request(operation(), map(), keyword()) :: {:ok, map()} | {:error, term()}
+  def request(operation, payload, opts \\ []) when is_atom(operation) and is_map(payload) do
+    pool = pool_name(opts)
+
+    case available_indices(pool) do
       [] ->
-        {:error, if(compiler_enabled?(), do: :compiler_unavailable, else: :compiler_disabled)}
+        {:error, :compiler_unavailable}
 
       indices ->
         offset = :erlang.phash2({self(), System.unique_integer([:positive])}, length(indices))
         index = Enum.at(indices, offset)
-        timeout = Application.get_env(:letterpress, :compiler_timeout, 15_000)
-        Worker.request(index, operation, payload, timeout)
+        timeout = Keyword.get(opts, :timeout, @default_timeout)
+        Worker.request(pool, index, operation, payload, timeout)
     end
   end
 
-  @doc "Returns a stable compiler status suitable for readiness checks."
-  @spec status() :: :disabled | :unavailable | :ready
-  def status do
-    cond do
-      not compiler_enabled?() -> :disabled
-      available?() -> :ready
-      true -> :unavailable
-    end
-  end
+  @doc """
+  Returns `:ready` when `:pool` has a worker, otherwise `:unavailable`.
 
-  defp compiler_enabled?, do: Application.get_env(:letterpress, :compiler_enabled, true) == true
+  This is suitable for authoring-node readiness checks. Delivery-only nodes do
+  not need a compiler pool and should not include it in their readiness policy.
+  """
+  @spec status(keyword()) :: :unavailable | :ready
+  def status(opts \\ []), do: if(available?(opts), do: :ready, else: :unavailable)
 
-  defp worker_count do
-    case Application.get_env(:letterpress, :compiler_pool_size, 2) do
-      count when is_integer(count) and count > 0 -> count
-      _ -> 1
-    end
-  end
+  defp pool_name(opts), do: Keyword.get(opts, :pool, @default_pool)
 
-  defp available_indices do
-    if Process.whereis(Letterpress.Compiler.Registry) do
-      Enum.filter(0..(worker_count() - 1), fn index ->
-        Registry.lookup(Letterpress.Compiler.Registry, index) != []
-      end)
+  defp available_indices(pool) do
+    if Process.whereis(pool) do
+      Registry.select(pool, [{{:"$1", :_, :_}, [{:is_integer, :"$1"}], [:"$1"]}])
     else
       []
     end

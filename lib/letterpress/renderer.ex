@@ -1,10 +1,28 @@
 defmodule Letterpress.Renderer do
   @moduledoc """
-  Renders trusted immutable artifacts in bounded isolated BEAM processes.
+  Renders verified artifacts in bounded, isolated BEAM processes.
 
-  Rendering is atomic across channels: a caller receives every requested
-  subject/HTML/text value or an error and no partial result. The MJML compiler
-  and Node are never used here.
+  Rendering is atomic across channels: a caller receives every configured
+  subject, HTML, and text value or an error with no partial output. Values are
+  normalized as JSON, checked against the artifact's typed schema, and escaped
+  according to contexts proven during compilation.
+
+  Each render runs in a monitored process with a deadline, maximum heap, input
+  budgets, loop budget, and per-channel output limit. The MJML compiler and Node
+  are never used in this path.
+
+  ## Example
+
+      iex> schema = %{
+      ...>   "version" => 1,
+      ...>   "variables" => %{
+      ...>     "name" => %{"type" => "string", "context" => "text"}
+      ...>   }
+      ...> }
+      iex> {:ok, artifact, []} =
+      ...>   Letterpress.compile("text/liquid@1", "Hello {{ name }}", schema)
+      iex> Letterpress.Renderer.render(artifact, %{"name" => "Grace"})
+      {:ok, %{text: "Hello Grace"}}
   """
 
   alias Letterpress.{Artifact, Contract, Diagnostic, JSON, Schema, Telemetry}
@@ -12,12 +30,35 @@ defmodule Letterpress.Renderer do
 
   @allowed_tags ~w(if unless for case comment break continue)
   @options_schema [
-    timeout: [type: :pos_integer],
-    max_output_bytes: [type: :pos_integer],
+    timeout: [type: :pos_integer, default: 5_000],
+    max_output_bytes: [type: :pos_integer, default: 1_000_000],
+    max_heap_words: [type: :pos_integer, default: 2_000_000],
+    subject_max_bytes: [type: :pos_integer, default: 998],
+    allowed_url_schemes: [type: {:list, :string}, default: ~w(http https mailto tel cid)],
     strict_values: [type: :boolean, default: true]
   ]
 
-  @doc "Renders a decoded artifact with strict typed values and runtime budgets."
+  @doc """
+  Renders a decoded artifact with typed values and runtime budgets.
+
+  `artifact` may be a verified `Letterpress.Artifact` or its string-keyed map
+  projection. `values` must be a JSON object whose delivery-phase values match
+  the embedded schema.
+
+  ## Options
+
+    * `:strict_values` - reject undeclared root keys; defaults to `true`
+    * `:timeout` - whole-render deadline in milliseconds; defaults to `5_000`
+    * `:max_heap_words` - isolated process heap limit; defaults to `2_000_000`
+    * `:max_output_bytes` - limit for each rendered channel; defaults to
+      `1_000_000`
+    * `:subject_max_bytes` - subject byte limit; defaults to `998`
+    * `:allowed_url_schemes` - narrows the contract's absolute URL schemes for
+      this call; defaults to `http`, `https`, `mailto`, `tel`, and `cid`
+
+  Relative paths and fragment URLs remain valid regardless of the absolute
+  scheme list. Invalid options and expected render failures return diagnostics.
+  """
   @spec render(Artifact.t() | map(), map(), keyword()) ::
           {:ok, %{optional(atom()) => String.t()}} | {:error, [Diagnostic.t()]}
   def render(artifact, values, opts \\ []) do
@@ -37,7 +78,9 @@ defmodule Letterpress.Renderer do
   end
 
   defp decode(%Artifact{} = artifact) do
-    artifact |> Artifact.to_map() |> Artifact.decode()
+    artifact
+    |> Artifact.to_map()
+    |> Artifact.decode()
   end
 
   defp decode(map) when is_map(map), do: Artifact.decode(map)
@@ -69,7 +112,11 @@ defmodule Letterpress.Renderer do
       known_roots =
         definitions
         |> Enum.filter(&(&1["phase"] == "delivery"))
-        |> Enum.map(&(&1["name"] |> String.split(".") |> hd()))
+        |> Enum.map(fn definition ->
+          definition["name"]
+          |> String.split(".")
+          |> hd()
+        end)
         |> MapSet.new()
 
       case Enum.find(Map.keys(values), &(not MapSet.member?(known_roots, &1))) do
@@ -106,10 +153,8 @@ defmodule Letterpress.Renderer do
   end
 
   defp isolated_render(artifact, values, opts) do
-    timeout =
-      Keyword.get(opts, :timeout, Application.get_env(:letterpress, :render_timeout, 5_000))
-
-    max_heap = Application.get_env(:letterpress, :render_max_heap_words, 2_000_000)
+    timeout = Keyword.fetch!(opts, :timeout)
+    max_heap = Keyword.fetch!(opts, :max_heap_words)
     parent = self()
     ref = make_ref()
 
@@ -135,6 +180,9 @@ defmodule Letterpress.Renderer do
   end
 
   defp render_channels(artifact, values, opts) do
+    Process.put(:letterpress_subject_max_bytes, Keyword.fetch!(opts, :subject_max_bytes))
+    Process.put(:letterpress_allowed_url_schemes, Keyword.fetch!(opts, :allowed_url_schemes))
+
     channels = [subject: artifact.subject, html: artifact.html, text: artifact.text]
 
     channels
@@ -252,14 +300,7 @@ defmodule Letterpress.Renderer do
   defp continue_inspection(error), do: {:halt, error}
 
   defp within_output_limit?(output, opts) do
-    max =
-      Keyword.get(
-        opts,
-        :max_output_bytes,
-        Application.get_env(:letterpress, :render_max_output_bytes, 1_000_000)
-      )
-
-    byte_size(output) <= max
+    byte_size(output) <= Keyword.fetch!(opts, :max_output_bytes)
   end
 
   defp value_at(values, path) do

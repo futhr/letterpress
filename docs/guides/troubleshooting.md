@@ -1,16 +1,11 @@
 # Troubleshooting
 
-## Compiler is disabled
-
-`LP_COMPILER_DISABLED` means this node was intentionally configured for
-delivery-only work. Route authoring to a compiler-enabled node. Rendering an
-existing artifact remains supported.
-
 ## Compiler is unavailable or times out
 
-Check `Letterpress.Compiler.status/0`, the Node executable, worker supervision,
-and the configured timeout. A failed request never licenses a fallback
-compiler. Retry only when the host's authoring workflow says it is safe.
+Check `Letterpress.Compiler.status/1`, the Node executable, the caller-owned
+`Letterpress.Compiler.Supervisor`, and the per-call `:compiler_timeout`. A
+failed request never licenses a fallback compiler. Retry only when the host's
+authoring workflow says it is safe.
 
 ## MJML or Liquid diagnostics point at old text
 

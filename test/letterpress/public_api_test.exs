@@ -5,6 +5,18 @@ defmodule Letterpress.PublicAPITest do
 
   import Letterpress.Test.Fixtures
 
+  doctest Letterpress
+  doctest Letterpress.Contract
+  doctest Letterpress.Profile
+
+  test "the package leaves compiler supervision to the caller" do
+    assert Application.spec(:letterpress, :mod) == []
+    refute Code.ensure_loaded?(Letterpress.Application)
+
+    %{id: Letterpress.Compiler.Pool, type: :supervisor} =
+      Letterpress.Compiler.Supervisor.child_spec(pool_size: 1)
+  end
+
   test "exposes the versioned profiles and generated contract" do
     assert Letterpress.version() == "0.1.0"
     assert Letterpress.profiles() == ["email/mjml-liquid@1", "text/liquid@1"]

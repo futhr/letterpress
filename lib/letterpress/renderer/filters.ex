@@ -1,15 +1,33 @@
 defmodule Letterpress.Renderer.Filters do
   @moduledoc """
-  Implements the compiler-reserved final context filter.
+  Implements the compiler-reserved final output-context filter.
 
-  The filter is appended by the trusted compiler after every delivery output.
+  The trusted compiler appends this filter after every delivery expression.
   User source cannot name it directly. It escapes or validates the final value
-  after all ordinary Liquid filters have executed.
+  after ordinary Liquid filters have run, which prevents a preceding filter
+  from bypassing the context selected during compilation.
+
+  This module is part of the renderer implementation. Template authors should
+  declare the correct variable context instead of calling it.
+
+  ## Examples
+
+      iex> Letterpress.Renderer.Filters.escape("<Ada & Grace>", "html_text")
+      {:ok, "&lt;Ada &amp; Grace&gt;"}
+
+      iex> Letterpress.Renderer.Filters.escape("javascript:alert(1)", "url")
+      :error
   """
 
-  @allowed_url_schemes ~w(http https mailto tel cid)
+  @default_allowed_url_schemes ~w(http https mailto tel cid)
+  @default_subject_max_bytes 998
 
-  @doc "Solid custom-filter callback used by the bounded renderer."
+  @doc """
+  Implements the custom-filter callback expected by `Solid.render/3`.
+
+  Only the compiler-reserved `"letterpress_escape"` filter and its two
+  arguments are accepted.
+  """
   @spec apply(String.t(), list()) :: {:ok, String.t()} | :error
   def apply("letterpress_escape", [value, context]) when is_binary(context) do
     escape(value, context)
@@ -17,7 +35,18 @@ defmodule Letterpress.Renderer.Filters do
 
   def apply(_, _), do: :error
 
-  @doc "Escapes or validates a value for its compiler-proven context."
+  @doc """
+  Escapes or validates a value for a compiler-proven context.
+
+  HTML text and attribute contexts are escaped. Subjects reject CR, LF, NUL,
+  and oversized output. URLs reject control characters, protocol-relative
+  values, and absolute schemes outside the render call's allowlist.
+
+  ## Example
+
+      iex> Letterpress.Renderer.Filters.escape("https://example.test/?a=1&b=2", "url")
+      {:ok, "https://example.test/?a=1&amp;b=2"}
+  """
   @spec escape(term(), String.t()) :: {:ok, String.t()} | :error
   def escape(value, "html_text"), do: {:ok, html_escape(to_text(value), false)}
   def escape(value, "html_attribute"), do: {:ok, html_escape(to_text(value), true)}
@@ -34,7 +63,7 @@ defmodule Letterpress.Renderer.Filters do
 
   defp safe_subject(value) do
     text = to_text(value)
-    max_bytes = Application.get_env(:letterpress, :subject_max_bytes, 998)
+    max_bytes = Process.get(:letterpress_subject_max_bytes, @default_subject_max_bytes)
 
     if String.contains?(text, ["\r", "\n", <<0>>]) or byte_size(text) > max_bytes do
       :error
@@ -69,8 +98,7 @@ defmodule Letterpress.Renderer.Filters do
   end
 
   defp allowed_url_schemes do
-    configured = Application.get_env(:letterpress, :allowed_url_schemes, @allowed_url_schemes)
-    Enum.map(configured, &to_string/1)
+    Process.get(:letterpress_allowed_url_schemes, @default_allowed_url_schemes)
   end
 
   defp html_escape(value, attribute?) do

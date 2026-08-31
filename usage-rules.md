@@ -9,8 +9,8 @@ authoring/publication failure, not a reason to fall back to another renderer.
 ## Render stored artifacts
 
 Call `Letterpress.render/3` at delivery with resolved values. Delivery nodes may
-set `config :letterpress, compiler_enabled: false`; valid stored artifacts still
-render without Node.
+omit `Letterpress.Compiler.Supervisor`; valid stored artifacts still render
+without Node.
 
 ## Keep application policy in the host
 

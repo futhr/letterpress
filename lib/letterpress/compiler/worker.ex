@@ -5,10 +5,15 @@ defmodule Letterpress.Compiler.Worker do
   Requests are serialized per worker. Timeouts, malformed frames, mismatched
   IDs, and process exits fail queued callers and terminate the worker so its
   supervisor establishes a fresh protocol boundary.
+
+  This is an implementation module. Applications supervise
+  `Letterpress.Compiler.Supervisor` and use `Letterpress` or
+  `Letterpress.Compiler`, rather than starting or calling workers directly.
   """
 
   use GenServer
 
+  @typedoc false
   @type state :: %{
           port: port(),
           pending: nil | map(),
@@ -16,17 +21,37 @@ defmodule Letterpress.Compiler.Worker do
           max_frame_bytes: pos_integer()
         }
 
-  @doc "Starts one compiler worker at `:index`."
+  @default_pool Letterpress.Compiler.Pool
+
+  @doc """
+  Starts one compiler worker for the configured pool and index.
+
+  Called by `Letterpress.Compiler.Supervisor`; it is not a host application
+  integration point.
+  """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     index = Keyword.fetch!(opts, :index)
-    GenServer.start_link(__MODULE__, opts, name: via(index))
+    pool = Keyword.get(opts, :pool, @default_pool)
+    GenServer.start_link(__MODULE__, opts, name: via(pool, index))
   end
 
-  @doc "Queues a request on the selected worker."
+  @doc """
+  Queues a request on a worker in the default compiler pool.
+
+  Prefer `Letterpress.Compiler.request/3`, which selects an available worker and
+  converts a missing pool into a tagged error.
+  """
   @spec request(non_neg_integer(), atom(), map(), timeout()) :: {:ok, map()} | {:error, term()}
   def request(index, operation, payload, timeout) do
-    GenServer.call(via(index), {:request, operation, payload, timeout}, timeout + 1_000)
+    request(@default_pool, index, operation, payload, timeout)
+  end
+
+  @doc false
+  @spec request(atom(), non_neg_integer(), atom(), map(), timeout()) ::
+          {:ok, map()} | {:error, term()}
+  def request(pool, index, operation, payload, timeout) do
+    GenServer.call(via(pool, index), {:request, operation, payload, timeout}, timeout + 1_000)
   rescue
     ArgumentError -> {:error, :compiler_unavailable}
   catch
@@ -34,8 +59,8 @@ defmodule Letterpress.Compiler.Worker do
     :exit, _ -> {:error, :compiler_unavailable}
   end
 
-  @impl true
-  def init(_) do
+  @impl GenServer
+  def init(opts) do
     Process.flag(:trap_exit, true)
 
     with {:ok, port} <- open_port() do
@@ -44,20 +69,20 @@ defmodule Letterpress.Compiler.Worker do
          port: port,
          pending: nil,
          queue: :queue.new(),
-         max_frame_bytes: Application.get_env(:letterpress, :compiler_max_frame_bytes, 2_000_000)
+         max_frame_bytes: Keyword.get(opts, :max_frame_bytes, 2_000_000)
        }}
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:request, operation, payload, timeout}, from, state) do
     request = %{from: from, operation: operation, payload: payload, timeout: timeout}
     {:noreply, enqueue_or_start(state, request)}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({port, {:data, frame}}, %{port: port, pending: pending} = state)
-      when not is_nil(pending) do
+      when is_map(pending) do
     with true <- byte_size(frame) <= state.max_frame_bytes,
          {:ok, response} <- Jason.decode(frame),
          true <- response["id"] == pending.id do
@@ -84,7 +109,7 @@ defmodule Letterpress.Compiler.Worker do
 
   def handle_info(_, state), do: {:noreply, state}
 
-  @impl true
+  @impl GenServer
   def terminate(_, %{port: port}) do
     if Port.info(port), do: Port.close(port)
     :ok
@@ -131,7 +156,7 @@ defmodule Letterpress.Compiler.Worker do
     |> Map.keys()
     |> Enum.reject(&(&1 == "LANG"))
     |> Enum.map(&{String.to_charlist(&1), false})
-    |> then(&(&1 ++ [{~c"LANG", ~c"C.UTF-8"}]))
+    |> then(&[{~c"LANG", ~c"C.UTF-8"} | &1])
   end
 
   defp enqueue_or_start(%{pending: nil} = state, request), do: start_request(state, request)
@@ -187,5 +212,5 @@ defmodule Letterpress.Compiler.Worker do
     |> Enum.each(&GenServer.reply(&1.from, {:error, reason}))
   end
 
-  defp via(index), do: {:via, Registry, {Letterpress.Compiler.Registry, index}}
+  defp via(pool, index), do: {:via, Registry, {pool, index}}
 end
