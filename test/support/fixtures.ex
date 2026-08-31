@@ -36,7 +36,11 @@ defmodule Letterpress.Test.Fixtures do
   end
 
   def email_compile_options do
-    [subject: "Notice for {{ user.name }}", compile_values: %{"brand_color" => "#3366ff"}]
+    [
+      subject: "Notice for {{ user.name }}",
+      text: "Hello {{ user.name }}. Open {{ action_url }}",
+      compile_values: %{"brand_color" => "#3366ff"}
+    ]
   end
 
   def email_values do

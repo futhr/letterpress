@@ -107,7 +107,7 @@ defmodule Letterpress.Renderer do
 
   defp isolated_render(artifact, values, opts) do
     timeout =
-      Keyword.get(opts, :timeout, Application.get_env(:letterpress, :render_timeout, 1_000))
+      Keyword.get(opts, :timeout, Application.get_env(:letterpress, :render_timeout, 5_000))
 
     max_heap = Application.get_env(:letterpress, :render_max_heap_words, 2_000_000)
     parent = self()

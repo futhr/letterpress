@@ -27,6 +27,7 @@ defmodule Letterpress.CompilerTest do
     assert first.html =~ ~s(letterpress_escape: "url")
     assert first.html =~ "#3366ff"
     assert first.subject =~ ~s(letterpress_escape: "subject")
+    assert first.text =~ ~s(letterpress_escape: "text")
 
     assert {:ok, second, _} =
              Letterpress.compile(
@@ -45,6 +46,53 @@ defmodule Letterpress.CompilerTest do
 
     assert artifact.html == nil
     assert artifact.text =~ ~s(letterpress_escape: "text")
+  end
+
+  test "validates and renders an email text alternative atomically" do
+    assert {:ok, artifact, diagnostics} =
+             Letterpress.compile(
+               "email/mjml-liquid@1",
+               email_source(),
+               email_schema(),
+               email_compile_options()
+             )
+
+    assert Enum.all?(diagnostics, &(&1.severity != :error))
+
+    assert {:ok, rendered} = Letterpress.render(artifact, email_values())
+    assert rendered.text == "Hello Ada <Lovelace>. Open https://example.test/account?a=1&b=2"
+
+    assert {:error, text_diagnostics} =
+             Letterpress.compile(
+               "email/mjml-liquid@1",
+               email_source(),
+               email_schema(),
+               Keyword.put(email_compile_options(), :text, "Unknown {{ missing }}")
+             )
+
+    assert Enum.any?(text_diagnostics, &(&1.code == "LP_SCHEMA_UNDECLARED_VARIABLE"))
+  end
+
+  test "declared-variable usage is calculated across HTML, subject, and text" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "body" => %{"type" => "string", "context" => "text"},
+        "subject_only" => %{"type" => "string", "context" => "subject"},
+        "text_only" => %{"type" => "string", "context" => "text"}
+      }
+    }
+
+    source =
+      "<mjml><mj-body><mj-section><mj-column><mj-text>{{ body }}</mj-text></mj-column></mj-section></mj-body></mjml>"
+
+    assert {:ok, _, diagnostics} =
+             Letterpress.compile("email/mjml-liquid@1", source, schema,
+               subject: "{{ subject_only }}",
+               text: "{{ text_only }}"
+             )
+
+    refute Enum.any?(diagnostics, &(&1.code == "LP_SCHEMA_UNUSED_VARIABLE"))
   end
 
   test "discovers variable contexts before a consumer schema exists" do

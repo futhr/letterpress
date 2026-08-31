@@ -24,6 +24,7 @@ defmodule Letterpress do
   @compile_options @base_options ++
                      [
                        subject: [type: :string],
+                       text: [type: :string],
                        compile_values: [type: {:map, :any, :any}, default: %{}]
                      ]
 
@@ -77,6 +78,7 @@ defmodule Letterpress do
     Telemetry.span(:compile, profile_name(profile), input_size(source), fn ->
       with :ok <- validate_source(source),
            {:ok, opts} <- validate_options(opts, @compile_options),
+           :ok <- validate_compile_channels(profile, opts),
            {:ok, compile_values} <- normalize_json_map(Keyword.fetch!(opts, :compile_values)),
            opts = Keyword.put(opts, :compile_values, compile_values),
            :ok <- Profile.validate(profile),
@@ -156,6 +158,7 @@ defmodule Letterpress do
       "profile" => profile,
       "source" => source,
       "subject" => Keyword.get(opts, :subject),
+      "text" => Keyword.get(opts, :text),
       "schema" => schema,
       "compile_values" => Keyword.get(opts, :compile_values, %{}),
       "document_version" => Keyword.fetch!(opts, :document_version)
@@ -227,6 +230,22 @@ defmodule Letterpress do
 
   defp validate_source(_),
     do: {:error, [Diagnostic.simple("LP_SOURCE_INVALID", "Source must be a string")]}
+
+  defp validate_compile_channels("text/liquid@1", opts) do
+    if Keyword.has_key?(opts, :subject) or Keyword.has_key?(opts, :text) do
+      {:error,
+       [
+         Diagnostic.simple(
+           "LP_OPTIONS_INVALID",
+           "Text profiles do not accept email subject or text-alternative options"
+         )
+       ]}
+    else
+      :ok
+    end
+  end
+
+  defp validate_compile_channels(_, _), do: :ok
 
   defp normalize_json_map(value) do
     case JSON.normalize_object(value) do

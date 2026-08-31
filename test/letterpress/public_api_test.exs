@@ -41,6 +41,11 @@ defmodule Letterpress.PublicAPITest do
     )
 
     assert_error_code(
+      Letterpress.compile("text/liquid@1", text_source(), text_schema(), text: "duplicate"),
+      "LP_OPTIONS_INVALID"
+    )
+
+    assert_error_code(
       Letterpress.compile("text/liquid@1", text_source(), text_schema(),
         compile_values: %{bad: self()}
       ),

@@ -165,15 +165,28 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
   const profile = requireString(payload.profile, "profile")
   const source = requireString(payload.source, "source")
   const subject = optionalString(payload.subject)
+  const text = optionalString(payload.text)
   const schema = requireObject(payload.schema, "schema")
   const compileValues = optionalObject(payload.compile_values)
   const documentVersion = optionalInteger(payload.document_version, 0)
-  const analysis = analyze(profile, source, schema, documentVersion)
+  const analysis = analyze(profile, source, schema, documentVersion, undefined, false)
   const subjectAnalysis =
     subject === null
       ? null
       : analyze("text/liquid@1", subject, schema, documentVersion, "subject", false)
-  const initialDiagnostics = [...analysis.diagnostics, ...(subjectAnalysis?.diagnostics ?? [])]
+  const textAnalysis =
+    text === null ? null : analyze("text/liquid@1", text, schema, documentVersion, undefined, false)
+  const initialDiagnostics = [
+    ...analysis.diagnostics,
+    ...(subjectAnalysis?.diagnostics ?? []),
+    ...(textAnalysis?.diagnostics ?? []),
+    ...unusedSchemaDiagnostics(
+      [analysis, subjectAnalysis, textAnalysis],
+      schema,
+      source,
+      documentVersion,
+    ),
+  ]
 
   if (initialDiagnostics.some((item) => item.severity === "error")) {
     return { diagnostics: initialDiagnostics, analysis: publicAnalysis(analysis) }
@@ -188,7 +201,20 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     sourceHash,
     documentVersion,
   )
-  const diagnostics = [...initialDiagnostics, ...prepared.diagnostics]
+  const preparedSubject = prepareAuxiliary(
+    subject,
+    subjectAnalysis,
+    schema,
+    compileValues,
+    documentVersion,
+  )
+  const preparedText = prepareAuxiliary(text, textAnalysis, schema, compileValues, documentVersion)
+  const diagnostics = [
+    ...initialDiagnostics,
+    ...prepared.diagnostics,
+    ...preparedSubject.diagnostics,
+    ...preparedText.diagnostics,
+  ]
   if (diagnostics.some((item) => item.severity === "error")) {
     return { diagnostics, analysis: publicAnalysis(analysis) }
   }
@@ -206,15 +232,11 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
           sourceHash,
           documentVersion,
         ).output,
-        subject: prepareSubject(
-          subject,
-          subjectAnalysis,
-          schema,
-          compileValues,
-          sourceHash,
-          documentVersion,
-        ),
-        source_map: prepared.sourceMap,
+        subject: preparedSubject.output,
+        source_map: {
+          ...prepared.sourceMap,
+          ...preparedSubject.sourceMap,
+        },
       },
       compiler: compilerVersions(),
     }
@@ -261,16 +283,13 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
       analysis: publicAnalysis(analysis),
       compiled: {
         html: restored.output,
-        text: null,
-        subject: prepareSubject(
-          subject,
-          subjectAnalysis,
-          schema,
-          compileValues,
-          sourceHash,
-          documentVersion,
-        ),
-        source_map: prepared.sourceMap,
+        text: preparedText.output,
+        subject: preparedSubject.output,
+        source_map: {
+          ...prepared.sourceMap,
+          ...preparedSubject.sourceMap,
+          ...preparedText.sourceMap,
+        },
       },
       compiler: compilerVersions(),
     }
@@ -658,6 +677,40 @@ function analyze(
   }
 
   return { ast, diagnostics, variables, dependencies, tags, translation_units: translationUnits }
+}
+
+function unusedSchemaDiagnostics(
+  analyses: (Analysis | null)[],
+  schema: JsonObject,
+  source: string,
+  documentVersion: number,
+): Diagnostic[] {
+  const used = new Set<string>()
+  for (const analysis of analyses) {
+    if (analysis === null) continue
+    for (const variable of analysis.variables) if (!variable.local) used.add(variable.name)
+    for (const dependency of analysis.dependencies) if (!dependency.local) used.add(dependency.name)
+  }
+
+  const sourceHash = sha256(source)
+  return [...flattenSchema(schema).keys()]
+    .sort()
+    .filter(
+      (name) => !used.has(name) && ![...used].some((usedName) => usedName.startsWith(`${name}.`)),
+    )
+    .map((name) =>
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: 0, end: 0 },
+        "hint",
+        "LP_SCHEMA_UNUSED_VARIABLE",
+        "letterpress-schema",
+        `Variable ${name} is declared but not used`,
+        { variable: name },
+      ),
+    )
 }
 
 function validateElement(
@@ -1065,26 +1118,35 @@ function restoreSentinels(
   return { output: restored, diagnostics }
 }
 
-function prepareSubject(
-  subject: string | null,
+function prepareAuxiliary(
+  source: string | null,
   analysis: Analysis | null,
   schema: JsonObject,
   compileValues: JsonObject,
-  sourceHash: string,
   documentVersion: number,
-): string | null {
-  if (subject === null) return null
-  if (analysis === null) return subject
+): { output: string | null; diagnostics: Diagnostic[]; sourceMap: JsonObject } {
+  if (source === null || analysis === null) return { output: null, diagnostics: [], sourceMap: {} }
+  const sourceHash = sha256(source)
   const prepared = prepareSource(
-    subject,
+    source,
     analysis,
     schema,
     compileValues,
     sourceHash,
     documentVersion,
   )
-  return restoreSentinels(prepared.source, prepared.sentinels, subject, sourceHash, documentVersion)
-    .output
+  const restored = restoreSentinels(
+    prepared.source,
+    prepared.sentinels,
+    source,
+    sourceHash,
+    documentVersion,
+  )
+  return {
+    output: restored.output,
+    diagnostics: [...prepared.diagnostics, ...restored.diagnostics],
+    sourceMap: prepared.sourceMap,
+  }
 }
 
 function publicAnalysis(analysis: Analysis): JsonObject {
@@ -1345,6 +1407,7 @@ function schemaDefinition(schema: JsonObject, name: string): JsonObject | undefi
 function compatibleContext(declared: string, actual: string): boolean {
   if (declared === actual) return true
   if (declared === "text") return ["text", "html_text", "subject"].includes(actual)
+  if (declared === "url") return actual === "text"
   if (declared === "html_attribute") return actual === "html_attribute"
   return false
 }

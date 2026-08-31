@@ -37,7 +37,8 @@ source = """
 
 {:ok, artifact, diagnostics} =
   Letterpress.compile("email/mjml-liquid@1", source, schema,
-    subject: "Welcome, {{ name }}"
+    subject: "Welcome, {{ name }}",
+    text: "Hello {{ name }}. Open {{ action_url }}"
   )
 ```
 

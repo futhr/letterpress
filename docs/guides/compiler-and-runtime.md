@@ -31,9 +31,13 @@ Valid stored artifacts still decode and render. Rendering runs in an isolated
 BEAM task with strict variables, output limits, collection/loop budgets, a
 timeout, and an allow-listed Liquid surface.
 
+For email artifacts, pass the plain-text alternative as the `:text` compile
+option. It is schema-checked and stored with the HTML and subject so delivery
+renders all configured channels atomically.
+
 ```elixir
 config :letterpress,
-  render_timeout: 1_000,
+  render_timeout: 5_000,
   render_max_output_bytes: 1_000_000,
   render_max_heap_words: 2_000_000,
   subject_max_bytes: 998

@@ -112,6 +112,11 @@ Rendering rejects missing required delivery values, unknown values when strict
 mode is active, invalid types, unsafe URLs, CR/LF in subject values, and budget
 violations.
 
+A variable declared with URL type/context may also be emitted into the plain
+text channel. It retains URL type validation and receives plain-text output
+handling there; URL declarations are never accepted in general HTML text or
+non-URL attributes.
+
 The compiler reports discovered-but-undeclared and declared-but-unused
 variables separately. It never infers a security context from a variable name.
 
@@ -130,9 +135,15 @@ ordinary analysis or compilation before publication.
 `Letterpress.compile/4` accepts profile, source, schema, and options and returns
 `{:ok, artifact, diagnostics}` or `{:error, diagnostics}`.
 
+The email profile accepts optional `:subject` and `:text` Liquid sources. Both
+are analyzed against the same schema, compiled into the same immutable
+artifact, and rendered atomically with HTML. The text profile uses its primary
+source as the text channel and rejects those email-only options.
+
 For `email/mjml-liquid@1` the authoritative pipeline is:
 
-1. normalize UTF-8 input and calculate the source hash;
+1. normalize UTF-8 input, optional subject, and optional text alternative and
+   calculate their source hashes;
 2. parse the mixed MJML/Liquid document with source positions;
 3. validate profile grammar, schema references, contexts, and limits;
 4. resolve compile-phase values;

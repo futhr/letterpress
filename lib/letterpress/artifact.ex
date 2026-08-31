@@ -418,9 +418,14 @@ defmodule Letterpress.Artifact do
 
   defp artifact_options(opts) do
     %{
-      "subject_present" => not is_nil(Keyword.get(opts, :subject))
+      "compile_values_sha256" => CanonicalJSON.hash(Keyword.get(opts, :compile_values, %{})),
+      "subject_sha256" => optional_hash(Keyword.get(opts, :subject)),
+      "text_sha256" => optional_hash(Keyword.get(opts, :text))
     }
   end
+
+  defp optional_hash(nil), do: nil
+  defp optional_hash(value), do: sha256(value)
 
   defp bundle_hash do
     Application.app_dir(:letterpress, "priv/compiler/worker.mjs")
