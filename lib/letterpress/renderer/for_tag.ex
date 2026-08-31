@@ -1,17 +1,23 @@
 defmodule Letterpress.Renderer.ForTag do
   @moduledoc """
-  Restricted Solid `for` tag with a render-process iteration budget.
+  The bounded `for` tag used by the Letterpress Liquid renderer.
 
-  Parsing delegates to Solid's pinned grammar. Rendering preserves Liquid's
-  loop semantics while counting every nested iteration against one process-
-  local budget, so a small input cannot create unbounded nested work.
+  Parsing delegates to Solid's pinned grammar. Rendering preserves Liquid loop
+  variables, `limit`, `offset`, `reversed`, `break`, `continue`, and `else`
+  behavior while charging every nested iteration to one process-local budget.
+
+  This is an implementation module installed by `Letterpress.Renderer`.
+  Template authors use the ordinary Liquid `{% for %}` syntax.
   """
+
+  @behaviour Solid.Tag
+
+  import Solid.NumberHelper, only: [to_integer: 1]
 
   alias Solid.{Argument, Variable}
   alias Solid.Tags.ForTag, as: SolidForTag
 
-  import Solid.NumberHelper, only: [to_integer: 1]
-
+  @typedoc "Parsed state for one bounded Liquid `for` tag."
   @type t :: %__MODULE__{
           loc: Solid.Parser.Loc.t(),
           enumerable: Argument.t(),
@@ -25,10 +31,8 @@ defmodule Letterpress.Renderer.ForTag do
   @enforce_keys [:loc, :enumerable, :variable, :reversed, :parameters, :body, :else_body]
   defstruct [:loc, :enumerable, :variable, :reversed, :parameters, :body, :else_body]
 
-  @behaviour Solid.Tag
-
   @doc false
-  @impl true
+  @impl Solid.Tag
   def parse("for", loc, context) do
     case SolidForTag.parse("for", loc, context) do
       {:ok, tag, context} -> {:ok, struct!(__MODULE__, Map.from_struct(tag)), context}
@@ -37,6 +41,8 @@ defmodule Letterpress.Renderer.ForTag do
   end
 
   defimpl Solid.Renderable do
+    @impl Solid.Renderable
+    @spec render(Letterpress.Renderer.ForTag.t(), term(), keyword()) :: term()
     def render(tag, context, options) do
       for_name = "#{tag.variable.identifier}-#{tag.enumerable}"
 
@@ -69,7 +75,11 @@ defmodule Letterpress.Renderer.ForTag do
             acc_context =
               acc_context
               |> set_enumerable_value(enumerable_key, value)
-              |> maybe_put_forloop_map(for_name, enumerable_key, index, length, parent_forloop)
+              |> maybe_put_forloop_map(
+                for_name,
+                enumerable_key,
+                {index, length, parent_forloop}
+              )
 
             try do
               {result, acc_context} = Solid.render(tag.body, acc_context, options)
@@ -117,7 +127,7 @@ defmodule Letterpress.Renderer.ForTag do
       %{context | iteration_vars: Map.put(context.iteration_vars, key, value)}
     end
 
-    defp maybe_put_forloop_map(context, for_name, key, index, length, parent_forloop)
+    defp maybe_put_forloop_map(context, for_name, key, {index, length, parent_forloop})
          when key != "forloop" do
       forloop = %{
         "index" => index + 1,
@@ -134,7 +144,7 @@ defmodule Letterpress.Renderer.ForTag do
       %{context | iteration_vars: Map.put(context.iteration_vars, "forloop", forloop)}
     end
 
-    defp maybe_put_forloop_map(context, _, _, _, _, _),
+    defp maybe_put_forloop_map(context, _, _, _),
       do: context
 
     defp enumerable(argument, context, options) do

@@ -1,0 +1,83 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Artifacts and translations
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+deps =
+  if File.exists?(Path.join(app_root, "mix.exs")) do
+    [{:letterpress, path: app_root}]
+  else
+    [{:letterpress, "~> 0.1"}]
+  end
+
+Mix.install(deps)
+
+unless Letterpress.Compiler.available?() do
+  {:ok, _pid} = Letterpress.Compiler.Supervisor.start_link(pool_size: 1)
+end
+```
+
+Artifacts are canonical JSON values with a verified content hash. Translation
+operations work on source before compilation and preserve Liquid placeholders.
+
+## Translate source without changing placeholders
+
+```elixir
+source = "Hello {{ name }}{% if urgent %}!{% endif %}"
+
+schema = %{
+  "version" => 1,
+  "variables" => %{
+    "name" => %{"type" => "string", "context" => "text"},
+    "urgent" => %{"type" => "boolean", "context" => "none"}
+  }
+}
+
+{:ok, [unit], []} =
+  Letterpress.extract_translation_units("text/liquid@1", source, schema)
+
+translated_source = "Hej {{ name }}{% if urgent %}!{% endif %}"
+
+{:ok, translated, []} =
+  Letterpress.apply_translations(
+    "text/liquid@1",
+    source,
+    schema,
+    %{unit["id"] => translated_source}
+  )
+
+translated
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"Hej {{ name }}{% if urgent %}!{% endif %}"
+```
+
+## Encode, decode, and render the translated artifact
+
+```elixir
+{:ok, artifact, []} = Letterpress.compile("text/liquid@1", translated, schema)
+{:ok, json} = Letterpress.encode_artifact(artifact)
+{:ok, decoded} = Letterpress.decode_artifact(json)
+{:ok, rendered} = Letterpress.render(decoded, %{"name" => "Mira", "urgent" => true})
+
+%{
+  hash_preserved: decoded.content_sha256 == artifact.content_sha256,
+  canonical_bytes: byte_size(json),
+  text: rendered.text
+}
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%{canonical_bytes: 1237, hash_preserved: true, text: "Hej Mira!"}
+```
+
+The byte count is specific to this artifact shape and Letterpress version. The
+contractual property is canonical encoding and hash verification, not a fixed
+artifact size.

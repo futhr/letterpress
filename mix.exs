@@ -12,7 +12,7 @@ defmodule Letterpress.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      description: "Safe, deterministic notification templates for Elixir.",
+      description: description(),
       source_url: @source_url,
       homepage_url: @source_url,
       package: package(),
@@ -75,19 +75,29 @@ defmodule Letterpress.MixProject do
     ]
   end
 
+  defp description, do: "Safe, deterministic notification templates for Elixir."
+
   defp package do
     [
       maintainers: ["Tobias Bohwalli <hi@futhr.io>"],
       licenses: ["MIT"],
-      links: %{"GitHub" => @source_url},
+      links: %{
+        "GitHub" => @source_url,
+        "Documentation" => "https://hexdocs.pm/letterpress"
+      },
       files: ~w(
           lib
           priv/compiler/worker.mjs
           priv/contract.json
-          conformance/fixtures.json
+          conformance
+          notebooks
+          bench/README.md
+          bench/output/benchmarks.md
           docs/adr
           docs/guides
+          docs/research
           docs/specs
+          docs/README.md
           mix.exs
           README.md
           CHANGELOG.md
@@ -112,11 +122,23 @@ defmodule Letterpress.MixProject do
         "docs/guides/browser-editor.md": [title: "Browser editor"],
         "docs/guides/consumer-adoption.md": [title: "Consumer adoption"],
         "docs/guides/troubleshooting.md": [title: "Troubleshooting"],
-        "docs/conformance/README.md": [title: "Conformance"],
-        "docs/adr/ADR.001-backend-authority.md": [title: "ADR.001 backend authority"],
-        "docs/adr/ADR.002-host-boundary.md": [title: "ADR.002 host boundary"],
+        "notebooks/quick-start.livemd": [title: "Quick start Livebook"],
+        "notebooks/text-and-diagnostics.livemd": [title: "Text and diagnostics Livebook"],
+        "notebooks/artifacts-and-translations.livemd": [
+          title: "Artifacts and translations Livebook"
+        ],
+        "bench/output/benchmarks.md": [title: "Benchmarks"],
+        "docs/README.md": [title: "Documentation map"],
+        "docs/research/R.01-platform-analysis.md": [title: "Platform analysis"],
+        "docs/research/R.02-library-posture.md": [title: "Elixir library posture"],
+        "conformance/README.md": [title: "Conformance corpus"],
+        "docs/adr/ADR.001-backend-authority.md": [title: "Backend authority"],
+        "docs/adr/ADR.002-host-boundary.md": [title: "Host boundary"],
+        "docs/adr/ADR.003-caller-owned-supervision.md": [
+          title: "Caller-owned supervision"
+        ],
         "usage-rules.md": [title: "Usage rules"],
-        "docs/specs/LP.01-letterpress-contract.md": [title: "LP.01 contract"],
+        "docs/specs/LP.01-letterpress-contract.md": [title: "Letterpress contract"],
         "CONTRIBUTING.md": [title: "Contributing"],
         "RELEASING.md": [title: "Releasing"],
         "SECURITY.md": [title: "Security"],
@@ -125,10 +147,14 @@ defmodule Letterpress.MixProject do
       ],
       groups_for_extras: [
         Guides: ~r/docs\/guides/,
+        Livebooks: ~r/notebooks/,
+        Performance: ~r/bench\/output/,
+        Research: ~r/docs\/research/,
         Contract: ["docs/specs/LP.01-letterpress-contract.md"],
         Architecture: ~r/docs\/adr/,
         Reference: [
-          "docs/conformance/README.md",
+          "docs/README.md",
+          "conformance/README.md",
           "usage-rules.md",
           "CONTRIBUTING.md",
           "RELEASING.md",
@@ -140,10 +166,16 @@ defmodule Letterpress.MixProject do
       groups_for_modules: [
         "Public API": [Letterpress, Letterpress.Artifact, Letterpress.Diagnostic],
         "Profiles and schemas": [Letterpress.Profile, Letterpress.Schema],
-        Compilation: [Letterpress.Compiler, Letterpress.Compiler.Worker],
+        Compilation: [Letterpress.Compiler, Letterpress.Compiler.Supervisor],
         Rendering: [Letterpress.Renderer],
         Contracts: [Letterpress.Contract, Letterpress.CanonicalJSON],
-        Telemetry: [Letterpress.Telemetry]
+        Telemetry: [Letterpress.Telemetry],
+        "Internal modules": [
+          Letterpress.Compiler.Worker,
+          Letterpress.JSON,
+          Letterpress.Renderer.Filters,
+          Letterpress.Renderer.ForTag
+        ]
       ]
     ]
   end

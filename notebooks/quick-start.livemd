@@ -1,0 +1,99 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Compile once, render many times
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+deps =
+  if File.exists?(Path.join(app_root, "mix.exs")) do
+    [{:letterpress, path: app_root}]
+  else
+    [{:letterpress, "~> 0.1"}]
+  end
+
+Mix.install(deps)
+
+unless Letterpress.Compiler.available?() do
+  {:ok, _pid} = Letterpress.Compiler.Supervisor.start_link(pool_size: 1)
+end
+```
+
+Letterpress separates authoring from delivery. Authoring validates a typed
+schema and compiles source into an immutable artifact. Delivery renders that
+artifact without Node or MJML.
+
+## Compile an email
+
+The schema declares each value and its output context. Contexts are enforced
+rules, not labels for editor display.
+
+```elixir
+schema = %{
+  "version" => 1,
+  "variables" => %{
+    "html_name" => %{"type" => "string", "context" => "html_text"},
+    "subject_name" => %{"type" => "string", "context" => "subject"},
+    "text_name" => %{"type" => "string", "context" => "text"},
+    "action_url" => %{"type" => "url", "context" => "url"}
+  }
+}
+
+source = """
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Hello {{ html_name }}</mj-text>
+        <mj-button href="{{ action_url }}">Open account</mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
+"""
+
+{:ok, artifact, diagnostics} =
+  Letterpress.compile("email/mjml-liquid@1", source, schema,
+    subject: "Welcome, {{ subject_name }}",
+    text: "Hello {{ text_name }}. Open {{ action_url }}"
+  )
+
+{artifact.profile, diagnostics}
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{"email/mjml-liquid@1", []}
+```
+
+Persist the complete artifact, not only its HTML. The artifact carries the
+profile, compiler identity, schema, source map, and content hash needed for
+safe decoding and later rendering.
+
+## Render at delivery time
+
+All channels render atomically. A subject, HTML, or text failure returns an
+error instead of a partial message.
+
+```elixir
+{:ok, rendered} =
+  Letterpress.render(artifact, %{
+    "html_name" => "Taylor",
+    "subject_name" => "Taylor",
+    "text_name" => "Taylor",
+    "action_url" => "https://example.test/account"
+  })
+
+Map.take(rendered, [:subject, :text])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%{subject: "Welcome, Taylor", text: "Hello Taylor. Open https://example.test/account"}
+```
+
+The consumer now passes `rendered.subject`, `rendered.html`, and
+`rendered.text` to its chosen delivery library. Letterpress does not own the
+provider or send operation.

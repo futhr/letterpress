@@ -1,12 +1,29 @@
 defmodule Letterpress.CanonicalJSON do
   @moduledoc """
-  Encodes JSON-compatible data with lexical object keys and no insignificant whitespace.
+  Encodes JSON-compatible data into Letterpress's deterministic byte form.
 
-  It is intentionally small: Letterpress artifacts contain only JSON native
-  values and finite floats are rejected before reaching this encoder.
+  Object keys are converted to strings and sorted lexically at every depth.
+  Arrays keep their order, and no insignificant whitespace is emitted.
+  Letterpress normalizes public input before it reaches this module, so callers
+  should pass only maps, lists, strings, finite numbers, booleans, and `nil`.
+
+  ## Example
+
+      iex> Letterpress.CanonicalJSON.encode!(%{"z" => 1, "a" => [true, nil]})
+      ~s({"a":[true,null],"z":1})
   """
 
-  @doc "Encodes a JSON-compatible value deterministically."
+  @doc """
+  Encodes a JSON-compatible value.
+
+  Returns `{:error, exception}` instead of raising when the value cannot be
+  represented by this canonical form.
+
+  ## Example
+
+      iex> Letterpress.CanonicalJSON.encode(%{b: 2, a: 1})
+      {:ok, ~s({"a":1,"b":2})}
+  """
   @spec encode(term()) :: {:ok, binary()} | {:error, term()}
   def encode(value) do
     {:ok, IO.iodata_to_binary(do_encode(value))}
@@ -14,11 +31,32 @@ defmodule Letterpress.CanonicalJSON do
     error in [ArgumentError, Protocol.UndefinedError] -> {:error, error}
   end
 
-  @doc "Encodes a JSON-compatible value deterministically or raises."
-  @spec encode!(term()) :: binary()
-  def encode!(value), do: value |> do_encode() |> IO.iodata_to_binary()
+  @doc """
+  Encodes a JSON-compatible value or raises for unsupported input.
 
-  @doc "Returns the lowercase SHA-256 hash of canonical JSON."
+  Use `encode/1` at caller-controlled boundaries where invalid data is an
+  expected failure.
+  """
+  @spec encode!(term()) :: binary()
+  def encode!(value) do
+    value
+    |> do_encode()
+    |> IO.iodata_to_binary()
+  end
+
+  @doc """
+  Returns the lowercase SHA-256 digest of the canonical bytes.
+
+  Maps with the same normalized content hash identically regardless of their
+  insertion order.
+
+  ## Example
+
+      iex> left = %{"b" => 2, "a" => 1}
+      iex> right = %{"a" => 1, "b" => 2}
+      iex> Letterpress.CanonicalJSON.hash(left) == Letterpress.CanonicalJSON.hash(right)
+      true
+  """
   @spec hash(term()) :: String.t()
   def hash(value), do: :crypto.hash(:sha256, encode!(value)) |> Base.encode16(case: :lower)
 

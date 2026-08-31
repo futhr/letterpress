@@ -5,6 +5,8 @@ defmodule Letterpress.JSONTest do
 
   alias Letterpress.JSON
 
+  doctest Letterpress.JSON
+
   test "normalizes nested atom keys and preserves JSON values" do
     assert {:ok, normalized} =
              JSON.normalize_object(%{user: %{name: "Ada"}, flags: [true, nil], score: 1.5})

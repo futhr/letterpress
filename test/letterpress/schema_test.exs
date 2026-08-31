@@ -5,6 +5,8 @@ defmodule Letterpress.SchemaTest do
 
   alias Letterpress.Schema
 
+  doctest Letterpress.Schema
+
   test "normalizes atom keys without creating atoms from input" do
     schema = %{version: 1, variables: %{name: %{type: "string"}}}
 
@@ -35,7 +37,12 @@ defmodule Letterpress.SchemaTest do
     variables =
       Map.new(defaults, fn
         {type, %{"default" => default} = definition} when type in ["object", "list"] ->
-          {"value_#{type}", definition |> Map.put("type", type) |> Map.put("default", default)}
+          definition =
+            definition
+            |> Map.put("type", type)
+            |> Map.put("default", default)
+
+          {"value_#{type}", definition}
 
         {type, default} ->
           {"value_#{type}", %{"type" => type, "default" => default}}

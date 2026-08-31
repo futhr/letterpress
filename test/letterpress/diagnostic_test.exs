@@ -5,6 +5,8 @@ defmodule Letterpress.DiagnosticTest do
 
   alias Letterpress.Diagnostic
 
+  doctest Letterpress.Diagnostic
+
   test "maps worker diagnostics to the stable public JSON projection" do
     base = %{
       "version" => 1,
@@ -29,7 +31,11 @@ defmodule Letterpress.DiagnosticTest do
     assert Enum.map(diagnostics, & &1.severity) == [:error, :warning, :information, :hint, :error]
     assert Diagnostic.errors?(diagnostics)
 
-    projection = diagnostics |> Enum.at(1) |> Diagnostic.to_map()
+    projection =
+      diagnostics
+      |> Enum.at(1)
+      |> Diagnostic.to_map()
+
     assert projection["severity"] == "warning"
     assert projection["range"]["start"] == %{"line" => 2, "character" => 3}
     assert projection["data"] == %{"safe" => true}

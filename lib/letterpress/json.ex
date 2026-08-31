@@ -2,12 +2,33 @@ defmodule Letterpress.JSON do
   @moduledoc """
   Normalizes caller data into collision-free JSON-native values.
 
-  Atom object keys are accepted as an Elixir convenience and converted to
-  strings. Structs, non-stringable keys, duplicate normalized keys, and values
-  that JSON cannot represent are rejected before they reach a port or artifact.
+  Atom keys are accepted as an Elixir convenience and converted to strings at
+  every depth. Structs, other key types, duplicate normalized keys, PIDs,
+  references, tuples, and non-finite numbers are rejected before they reach a
+  compiler port or artifact.
+
+  This is an input-boundary helper. It never creates atoms from caller data.
+
+  ## Example
+
+      iex> Letterpress.JSON.normalize_object(%{user: %{name: "Ada"}, active: true})
+      {:ok, %{"active" => true, "user" => %{"name" => "Ada"}}}
   """
 
-  @doc "Normalizes a JSON object, accepting atom or string keys."
+  @doc """
+  Normalizes a map with atom or string keys into a JSON object.
+
+  The entire nested value must be JSON-compatible. Any invalid key or value
+  returns `{:error, :invalid_json_object}`.
+
+  ## Examples
+
+      iex> Letterpress.JSON.normalize_object(%{"items" => [1, nil, false]})
+      {:ok, %{"items" => [1, nil, false]}}
+
+      iex> Letterpress.JSON.normalize_object(%{"pid" => self()})
+      {:error, :invalid_json_object}
+  """
   @spec normalize_object(term()) :: {:ok, map()} | {:error, :invalid_json_object}
   def normalize_object(value) when is_map(value) and not is_struct(value) do
     case normalize(value) do
@@ -31,13 +52,15 @@ defmodule Letterpress.JSON do
   end
 
   defp normalize(value) when is_list(value) do
-    Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
-      case normalize(item) do
-        {:ok, normalized} -> {:cont, {:ok, [normalized | acc]}}
-        :error -> {:halt, :error}
-      end
-    end)
-    |> case do
+    result =
+      Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
+        case normalize(item) do
+          {:ok, normalized} -> {:cont, {:ok, [normalized | acc]}}
+          :error -> {:halt, :error}
+        end
+      end)
+
+    case result do
       {:ok, reversed} -> {:ok, Enum.reverse(reversed)}
       :error -> :error
     end

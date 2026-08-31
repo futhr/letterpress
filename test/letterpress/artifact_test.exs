@@ -7,6 +7,8 @@ defmodule Letterpress.ArtifactTest do
 
   alias Letterpress.{Artifact, CanonicalJSON}
 
+  doctest Letterpress.Artifact
+
   setup do
     {:ok, artifact, _} = Letterpress.compile("text/liquid@1", text_source(), text_schema())
     %{artifact: artifact}
@@ -43,8 +45,12 @@ defmodule Letterpress.ArtifactTest do
   } do
     map = Artifact.to_map(artifact)
 
-    assert {:error, :invalid_artifact} =
-             map |> Map.put("unexpected", true) |> rehash() |> Artifact.decode()
+    unknown_field =
+      map
+      |> Map.put("unexpected", true)
+      |> rehash()
+
+    assert {:error, :invalid_artifact} = Artifact.decode(unknown_field)
 
     assert {:error, :invalid_artifact_compiler} =
              map
@@ -78,7 +84,8 @@ defmodule Letterpress.ArtifactTest do
     ]
 
     for {candidate, reason} <- cases do
-      assert {:error, ^reason} = candidate |> rehash() |> Artifact.decode()
+      candidate = rehash(candidate)
+      assert {:error, ^reason} = Artifact.decode(candidate)
     end
   end
 
@@ -90,6 +97,11 @@ defmodule Letterpress.ArtifactTest do
   end
 
   defp rehash(map) do
-    Map.put(map, "content_sha256", map |> Map.delete("content_sha256") |> CanonicalJSON.hash())
+    content_hash =
+      map
+      |> Map.delete("content_sha256")
+      |> CanonicalJSON.hash()
+
+    Map.put(map, "content_sha256", content_hash)
   end
 end

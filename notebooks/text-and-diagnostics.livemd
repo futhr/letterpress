@@ -1,0 +1,83 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Text templates and diagnostics
+
+```elixir
+app_root = Path.expand("..", __DIR__)
+
+deps =
+  if File.exists?(Path.join(app_root, "mix.exs")) do
+    [{:letterpress, path: app_root}]
+  else
+    [{:letterpress, "~> 0.1"}]
+  end
+
+Mix.install(deps)
+
+unless Letterpress.Compiler.available?() do
+  {:ok, _pid} = Letterpress.Compiler.Supervisor.start_link(pool_size: 1)
+end
+```
+
+The `text/liquid@1` profile covers SMS bodies, plain-text email alternatives,
+and other Unicode text. Transport-specific length and segmentation remain
+consumer policy.
+
+## Compile and render
+
+```elixir
+schema = %{
+  "version" => 1,
+  "variables" => %{
+    "name" => %{"type" => "string", "context" => "text"},
+    "urgent" => %{"type" => "boolean", "context" => "none"}
+  }
+}
+
+source = "Hello {{ name }}{% if urgent %}! Action required.{% endif %}"
+
+{:ok, artifact, []} = Letterpress.compile("text/liquid@1", source, schema)
+{:ok, rendered} = Letterpress.render(artifact, %{"name" => "Mira", "urgent" => true})
+
+rendered.text
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"Hello Mira! Action required."
+```
+
+## Discover variables before defining a schema
+
+`discover/3` reports compiler-proven uses and contexts. It does not infer
+types, phases, requiredness, or defaults.
+
+```elixir
+{:ok, analysis, []} = Letterpress.discover("text/liquid@1", source)
+Enum.map(analysis["variables"], &Map.take(&1, ["name", "context"]))
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[%{"context" => "text", "name" => "name"}]
+```
+
+## Expected failures are data
+
+Invalid authored source returns diagnostics. Stable codes are suitable for
+editor mapping and tests; messages may improve between compatible releases.
+
+```elixir
+{:error, diagnostics} =
+  Letterpress.discover("text/liquid@1", "Hello {{ name | escape }}")
+
+Enum.map(diagnostics, & &1.code)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+["LP_LIQUID_FILTER_FORBIDDEN"]
+```

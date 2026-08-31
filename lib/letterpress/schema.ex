@@ -1,9 +1,23 @@
 defmodule Letterpress.Schema do
   @moduledoc """
-  Validates and canonicalizes typed variable schema version 1.
+  Validates and canonicalizes Letterpress variable schemas.
 
-  The schema is deliberately JSON-native so artifacts can cross runtimes and
-  survive application upgrades without serializing Elixir terms.
+  A schema declares every template variable's type, phase, output context,
+  required/default behavior, description, and sensitivity. Object and list
+  definitions may describe nested values. The normalized form is deliberately
+  JSON-native so it can cross runtimes without serializing Elixir terms.
+
+  Atom keys are accepted at the Elixir boundary. Normalization converts them to
+  strings, fills contract defaults, sorts variables, and rejects unknown fields
+  or values that do not match the generated contract.
+
+  ## Example
+
+      iex> schema = %{version: 1, variables: %{name: %{type: "string"}}}
+      iex> {:ok, normalized} = Letterpress.Schema.normalize(schema)
+      iex> definition = normalized["variables"]["name"]
+      iex> {definition["phase"], definition["context"], definition["required"]}
+      {"delivery", "text", true}
   """
 
   alias Letterpress.{CanonicalJSON, Contract, Diagnostic, JSON}
@@ -13,7 +27,20 @@ defmodule Letterpress.Schema do
   @allowed_fields ~w(type phase context required default description sensitive items properties)
   @nested_fields ~w(type required default description sensitive items properties)
 
-  @doc "Normalizes a schema or returns stable diagnostics."
+  @doc """
+  Normalizes a version-1 schema or returns diagnostics.
+
+  Successful output has exactly the `"version"` and `"variables"` top-level
+  keys. Expected user-authored failures return one or more
+  `Letterpress.Diagnostic` structs rather than raising.
+
+  ## Example
+
+      iex> {:error, [diagnostic]} =
+      ...>   Letterpress.Schema.normalize(%{"version" => 2, "variables" => %{}})
+      iex> diagnostic.code
+      "LP_SCHEMA_VERSION"
+  """
   @spec normalize(map()) :: {:ok, map()} | {:error, [Diagnostic.t()]}
   def normalize(schema) when is_map(schema) and not is_struct(schema) do
     with {:ok, normalized} <- JSON.normalize_object(schema),
@@ -33,7 +60,18 @@ defmodule Letterpress.Schema do
   def normalize(_),
     do: {:error, [Diagnostic.simple("LP_SCHEMA_INVALID", "Schema must be a JSON object")]}
 
-  @doc "Returns the canonical SHA-256 hash of a normalized schema."
+  @doc """
+  Returns the lowercase SHA-256 digest of a normalized schema.
+
+  Call `normalize/1` first when the map came from an external caller. This
+  function hashes the value it receives and does not validate it again.
+
+  ## Example
+
+      iex> schema = %{"version" => 1, "variables" => %{}}
+      iex> byte_size(Letterpress.Schema.hash(schema))
+      64
+  """
   @spec hash(map()) :: String.t()
   def hash(schema), do: CanonicalJSON.hash(schema)
 
@@ -202,14 +240,24 @@ defmodule Letterpress.Schema do
   defp normalize_shape(name, %{"type" => "object"} = definition, depth) do
     with :ok <- validate_schema_depth(name, depth),
          {:ok, properties} <- normalize_properties(name, definition["properties"], depth) do
-      {:ok, definition |> Map.delete("items") |> Map.put("properties", properties)}
+      normalized =
+        definition
+        |> Map.delete("items")
+        |> Map.put("properties", properties)
+
+      {:ok, normalized}
     end
   end
 
   defp normalize_shape(name, %{"type" => "list"} = definition, depth) do
     with :ok <- validate_schema_depth(name, depth),
          {:ok, items} <- normalize_nested_definition("#{name}[]", definition["items"], depth + 1) do
-      {:ok, definition |> Map.delete("properties") |> Map.put("items", items)}
+      normalized =
+        definition
+        |> Map.delete("properties")
+        |> Map.put("items", items)
+
+      {:ok, normalized}
     end
   end
 

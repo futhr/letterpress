@@ -1,14 +1,46 @@
 defmodule Letterpress.Telemetry do
   @moduledoc """
-  Emits bounded discovery, compile, analyze, format, translation, and render telemetry.
+  Documents telemetry emitted around public Letterpress operations.
 
-  Metadata never includes source, output, values, variable names, or caller
+  Discovery, analysis, compilation, formatting, translation, and rendering emit
+  `:start` followed by either `:stop` or `:exception`. Metadata never includes
+  template source, rendered output, values, variable names, or caller
   identifiers.
+
+  ## Events
+
+  All event names have the form `[:letterpress, operation, phase]`.
+
+    * `:start` measures `:system_time` and includes `:profile` and `:operation`
+    * `:stop` measures `:duration` and `:input_size`, and adds a low-cardinality
+      `:result` classification
+    * `:exception` measures `:duration` and `:input_size`, and adds `:kind` plus
+      a redacted `:reason_class`
+
+  Durations use native time units. Convert them with
+  `System.convert_time_unit/3` in handlers or metric definitions.
+
+  ## Attaching a handler
+
+      :telemetry.attach(
+        "my-app-letterpress-render",
+        [:letterpress, :render, :stop],
+        fn _event, measurements, metadata, _config ->
+          MyApp.Metrics.record_render(measurements.duration, metadata.result)
+        end,
+        nil
+      )
   """
 
   @operations ~w(discover analyze compile render format apply_translations)a
 
-  @doc "Runs a public operation with start/stop/exception telemetry."
+  @doc """
+  Runs a supported operation with start, stop, and exception telemetry.
+
+  This function preserves the wrapped function's return value and exception
+  semantics. It is used by the public facade; consumers normally attach
+  handlers instead of calling it directly.
+  """
   @spec span(atom(), String.t(), non_neg_integer(), (-> term())) :: term()
   def span(operation, profile, input_size, fun) when operation in @operations do
     started = System.monotonic_time()

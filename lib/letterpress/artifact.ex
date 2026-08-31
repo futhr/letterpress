@@ -1,9 +1,29 @@
 defmodule Letterpress.Artifact do
   @moduledoc """
-  Immutable, canonical, portable result of Letterpress compilation.
+  The immutable, portable result of compiling a notification template.
 
-  The struct stores only JSON-native values and verifies its content hash when
-  decoded. Resolved delivery values are never part of an artifact.
+  An artifact contains compiled subject, HTML, and text templates together with
+  the normalized schema, compiler provenance, source maps, lint results, and
+  hashes that bind those fields together. It contains no recipient values or
+  other resolved delivery data.
+
+  Persist or transport artifacts through `encode/1` and `decode/1`. Decoding
+  rejects missing fields, extra fields, unsupported versions, malformed
+  provenance, invalid channel combinations, and content-hash mismatches.
+
+  ## Example
+
+      iex> schema = %{
+      ...>   "version" => 1,
+      ...>   "variables" => %{
+      ...>     "name" => %{"type" => "string", "context" => "text"}
+      ...>   }
+      ...> }
+      iex> {:ok, artifact, []} =
+      ...>   Letterpress.compile("text/liquid@1", "Hello {{ name }}", schema)
+      iex> {:ok, json} = Letterpress.Artifact.encode(artifact)
+      iex> Letterpress.Artifact.decode(json) == {:ok, artifact}
+      true
   """
 
   alias Letterpress.{CanonicalJSON, Profile, Schema}
@@ -17,6 +37,7 @@ defmodule Letterpress.Artifact do
   @semantic_version_pattern ~r/\A\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?\z/
   @delivery_contexts ~w(text html_text html_attribute url subject none)
 
+  @typedoc "A verified version-1 compiled artifact."
   @type t :: %__MODULE__{
           artifact_version: 1,
           profile: String.t(),
@@ -63,15 +84,20 @@ defmodule Letterpress.Artifact do
           {:ok, t()} | {:error, term()}
   def from_compiler(profile, source, schema, opts, result) do
     case result do
-      %{"compiled" => compiled, "compiler" => compiler} ->
-        build_compiler_artifact(profile, source, schema, opts, result, compiled, compiler)
+      %{"compiled" => _, "compiler" => _} ->
+        build_compiler_artifact(profile, source, schema, opts, result)
 
       _ ->
         {:error, :compiler_result_incomplete}
     end
   end
 
-  @doc "Decodes and verifies an artifact map or canonical JSON."
+  @doc """
+  Decodes and verifies an artifact map or JSON document.
+
+  Map input must use string keys and JSON-native values. The success value is a
+  `t:t/0`; failures return a stable reason atom or the JSON decoder error.
+  """
   @spec decode(binary() | map()) :: {:ok, t()} | {:error, term()}
   def decode(json) when is_binary(json) do
     with {:ok, map} <- Jason.decode(json), do: decode(map)
@@ -86,7 +112,12 @@ defmodule Letterpress.Artifact do
 
   def decode(_), do: {:error, :invalid_artifact}
 
-  @doc "Encodes a verified artifact as canonical JSON."
+  @doc """
+  Verifies an artifact and encodes it as canonical JSON.
+
+  Object keys are sorted and insignificant whitespace is omitted, so the same
+  artifact produces the same bytes on every encode.
+  """
   @spec encode(t()) :: {:ok, binary()} | {:error, term()}
   def encode(%__MODULE__{} = artifact) do
     map = to_map(artifact)
@@ -96,7 +127,12 @@ defmodule Letterpress.Artifact do
     end
   end
 
-  @doc "Returns the JSON-native artifact projection."
+  @doc """
+  Returns the JSON-native map covered by the artifact's content hash.
+
+  This projection is useful when a JSON encoder or storage adapter owns the
+  final serialization. Prefer `encode/1` when exact canonical bytes matter.
+  """
   @spec to_map(t()) :: map()
   def to_map(%__MODULE__{} = artifact) do
     %{
@@ -117,7 +153,13 @@ defmodule Letterpress.Artifact do
     }
   end
 
-  defp build_compiler_artifact(profile, source, schema, opts, result, compiled, compiler) do
+  defp build_compiler_artifact(
+         profile,
+         source,
+         schema,
+         opts,
+         %{"compiled" => compiled, "compiler" => compiler} = result
+       ) do
     variables =
       schema["variables"]
       |> Enum.map(fn {name, definition} -> Map.put(definition, "name", name) end)
@@ -385,7 +427,10 @@ defmodule Letterpress.Artifact do
   defp json_native?(_), do: false
 
   defp validate_hash(%{"content_sha256" => expected} = map) when is_binary(expected) do
-    actual = map |> Map.delete("content_sha256") |> CanonicalJSON.hash()
+    actual =
+      map
+      |> Map.delete("content_sha256")
+      |> CanonicalJSON.hash()
 
     if secure_compare(actual, expected),
       do: :ok,

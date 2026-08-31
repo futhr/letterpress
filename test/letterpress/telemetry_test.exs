@@ -5,6 +5,8 @@ defmodule Letterpress.TelemetryTest do
 
   import Letterpress.Test.Fixtures
 
+  doctest Letterpress.Telemetry
+
   test "telemetry is bounded and excludes source and values" do
     parent = self()
     handler = "letterpress-test-#{System.unique_integer([:positive])}"
@@ -109,6 +111,7 @@ defmodule Letterpress.TelemetryTest do
     assert_receive {[:letterpress, :analyze, :exception], _, %{reason_class: :unknown}}
   end
 
+  @spec handle_event(list(atom()), map(), map(), pid()) :: :ok
   def handle_event(event, measurements, metadata, recipient) do
     send(recipient, {event, measurements, metadata})
   end

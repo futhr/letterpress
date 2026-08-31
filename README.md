@@ -1,24 +1,136 @@
 # Letterpress
 
-Safe, deterministic notification templates for Elixir.
+**Safe, deterministic notification templates for Elixir.**
+
+[![Hex.pm](https://img.shields.io/hexpm/v/letterpress.svg)](https://hex.pm/packages/letterpress)
+[![Docs](https://img.shields.io/badge/docs-hexdocs-blue.svg)](https://hexdocs.pm/letterpress)
+[![CI](https://github.com/futhr/letterpress/actions/workflows/ci.yml/badge.svg)](https://github.com/futhr/letterpress/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/futhr/letterpress/branch/main/graph/badge.svg)](https://codecov.io/gh/futhr/letterpress)
+[![License](https://img.shields.io/github/license/futhr/letterpress.svg)](LICENSE)
+
+[Installation](#installation) ·
+[Quick start](#quick-start) ·
+[Packages](#packages) ·
+[Livebooks](#livebooks) ·
+[Benchmarks](#benchmarks) ·
+[Development](#development)
+
+---
 
 Letterpress compiles profile-based MJML and Liquid source into an immutable,
 portable artifact, then renders that artifact in pure BEAM code at delivery
-time. Its generated CodeMirror and Svelte 5 packages expose the same grammar,
-diagnostics, schema, and completions in browser editors without making the
-browser authoritative.
+time. Its CodeMirror and Svelte 5 packages use the same generated grammar,
+diagnostics, schema, and completions without making the browser authoritative.
 
-The project is pre-release. The public contract is specified in
-[`docs/specs/LP.01-letterpress-contract.md`](docs/specs/LP.01-letterpress-contract.md).
-No package has been published and no compatibility history is implied yet.
+---
+
+## Installation
+
+Add `letterpress` to your dependencies:
+
+```elixir
+def deps do
+  [
+    {:letterpress, "~> 0.1"}
+  ]
+end
+```
+
+Node 22 or newer is required on nodes that compile MJML templates. Node 22 is
+the supported floor; local development and the full CI lane use Node 24 LTS,
+while the portability matrix covers both releases. Nodes that only render
+previously compiled artifacts run entirely on the BEAM.
+
+Letterpress is a library application: it does not add processes to your OTP
+tree. On authoring nodes, add the compiler pool to your own supervisor:
+
+```elixir
+children = [
+  {Letterpress.Compiler.Supervisor, pool_size: 2}
+]
+
+Supervisor.start_link(children, strategy: :one_for_one)
+```
+
+Delivery-only nodes omit this child and do not need Node.
+
+---
+
+## Quick start
+
+Define a typed variable schema, compile the source during authoring, and store
+the complete artifact:
+
+```elixir
+schema = %{
+  "version" => 1,
+  "variables" => %{
+    "html_name" => %{"type" => "string", "context" => "html_text"},
+    "subject_name" => %{"type" => "string", "context" => "subject"},
+    "text_name" => %{"type" => "string", "context" => "text"},
+    "action_url" => %{"type" => "url", "context" => "url"}
+  }
+}
+
+source = """
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Hello {{ html_name }}</mj-text>
+        <mj-button href="{{ action_url }}">Open account</mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
+"""
+
+{:ok, artifact, diagnostics} =
+  Letterpress.compile("email/mjml-liquid@1", source, schema,
+    subject: "Welcome, {{ subject_name }}",
+    text: "Hello {{ text_name }}. Open {{ action_url }}"
+  )
+```
+
+Render every channel atomically from the stored artifact at delivery time:
+
+```elixir
+{:ok, result} =
+  Letterpress.render(artifact, %{
+    "html_name" => "Taylor",
+    "subject_name" => "Taylor",
+    "text_name" => "Taylor",
+    "action_url" => "https://example.test/account"
+  })
+```
+
+See the [quick-start guide](docs/guides/quickstart.md) for the full lifecycle.
+
+## Livebooks
+
+[![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https%3A%2F%2Fraw.githubusercontent.com%2Ffuthr%2Fletterpress%2Fmain%2Fnotebooks%2Fquick-start.livemd)
+
+- [Compile once, render many times](notebooks/quick-start.livemd) covers the
+  email authoring and delivery boundary.
+- [Text templates and diagnostics](notebooks/text-and-diagnostics.livemd)
+  covers the text profile, discovery, and expected failures.
+- [Artifacts and translations](notebooks/artifacts-and-translations.livemd)
+  covers translation placeholders and canonical artifact round trips.
+
+The notebooks are published in HexDocs. ExUnit evaluates their code cells and
+checks saved outputs against the current package version.
+
+---
 
 ## Packages
 
 | Registry | Package | Responsibility |
 |---|---|---|
-| Hex | `letterpress` | Profiles, compiler supervision, artifacts, safe Liquid rendering, diagnostics, telemetry, and conformance |
+| Hex | `letterpress` | Profiles, caller-owned compiler supervision, artifacts, safe Liquid rendering, diagnostics, telemetry, and conformance |
 | npm | `@letterpress/language` | CodeMirror mixed MJML/Liquid/CSS language services |
 | npm | `@letterpress/svelte` | Unstyled Svelte 5 editor and diagnostics integration |
+
+---
 
 ## Core lifecycle
 
@@ -35,10 +147,33 @@ tenancy, authorization, localization policy, translation providers, delivery
 providers, and legacy migration. Letterpress owns only the portable language,
 compiler, runtime, and editor contract.
 
+The [public contract](docs/specs/LP.01-letterpress-contract.md) defines this
+boundary and the serialized formats shared across runtimes.
+
+The [platform analysis](docs/research/R.01-platform-analysis.md) compares this
+boundary with hosted notification systems, provider templates, code-first email
+builders, and Elixir mail libraries.
+
+## Benchmarks
+
+The Benchee suite measures pure-BEAM rendering, bounded Liquid loops, artifact
+encoding/decoding, text compilation, and MJML compilation.
+
+```bash
+mix bench
+mix bench.smoke
+```
+
+See the [benchmark guide](bench/README.md) and
+[recorded results](bench/output/benchmarks.md). Smoke output checks that each
+scenario runs; use a stable run on controlled hardware for comparisons.
+
+---
+
 ## Development
 
-The supported floor is Elixir 1.18/OTP 27 and Node 22. pnpm manages the npm
-workspace.
+The supported floor is Elixir 1.18/OTP 27 and Node 22. Node 24 LTS is the
+pinned development version, and pnpm manages the npm workspace.
 
 ```bash
 mix setup
@@ -51,11 +186,12 @@ The release harness builds one Hex tarball and both npm tarballs once, records
 their hashes, and installs those exact bytes in throwaway consumers before a
 publish job can use them.
 
-Start with the [quick-start guide](docs/guides/quickstart.md). The
-[compiler/runtime guide](docs/guides/compiler-and-runtime.md) explains the
+The [compiler/runtime guide](docs/guides/compiler-and-runtime.md) explains the
 authoring-versus-delivery split, and the
 [browser editor guide](docs/guides/browser-editor.md) covers CodeMirror and
 Svelte integration.
+
+---
 
 ## License
 

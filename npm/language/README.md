@@ -8,7 +8,7 @@ the authoritative Hex compiler; publication must still use the backend.
 The MJML + Liquid formatter is lazy-loaded as a browser-only bundle. Consumers
 do not need to install Prettier or the Shopify formatter plugin.
 
-See the repository README and `LP.01` contract for setup and guarantees.
+See the repository README and public contract for setup and guarantees.
 
 ```ts
 import { letterpressLanguage } from "@letterpress/language"
