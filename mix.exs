@@ -56,13 +56,17 @@ defmodule Letterpress.MixProject do
       {:doctor, "~> 0.22", only: :dev, runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test, runtime: false},
-      {:stream_data, "~> 1.1", only: [:dev, :test]}
+      {:stream_data, "~> 1.1", only: [:dev, :test]},
+      {:benchee, "~> 1.3", only: :dev, runtime: false},
+      {:benchee_markdown, "~> 0.3", only: :dev, runtime: false}
     ]
   end
 
   defp aliases do
     [
-      setup: ["deps.get", "cmd pnpm install", "cmd pnpm build:compiler"]
+      setup: ["deps.get", "cmd pnpm install", "cmd pnpm build:compiler"],
+      bench: ["run bench/run.exs"],
+      "bench.smoke": ["run bench/run.exs --smoke"]
     ]
   end
 
