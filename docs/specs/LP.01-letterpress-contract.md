@@ -325,6 +325,14 @@ nodes, and allow-listed human-facing attributes. IDs derive from profile,
 structural source path, context, and source text hash. Units include source
 range, context, source text, placeholders, and optional description.
 
+Email extraction accepts the same optional subject and plain-text sources as
+compilation. Every email unit carries its `html`, `subject`, or `text` channel,
+and the channel participates in the stable ID so identical copy in two channels
+cannot collide. Translation application returns all configured authoring
+sources atomically; one missing or structurally invalid channel unit rejects
+the whole localized result. The source-only application API remains available
+for the single-channel HTML and text profiles.
+
 The `html/liquid@1` and `text/liquid@1` profiles represent their human-facing
 content as one whole-document translation unit. This keeps surrounding
 whitespace, inline markup, and Liquid control flow intact for short fragments
@@ -406,6 +414,7 @@ Letterpress.compile/4
 Letterpress.render/3
 Letterpress.extract_translation_units/4
 Letterpress.apply_translations/5
+Letterpress.localize/5
 Letterpress.format/3
 Letterpress.decode_artifact/1
 Letterpress.encode_artifact/1
@@ -419,7 +428,8 @@ render boundary.
 ## 13. Telemetry
 
 Letterpress emits start/stop/exception events for compile, discover, analyze,
-render, format, and translation application under `[:letterpress, operation, phase]`.
+render, format, source-only translation application, and atomic email
+localization under `[:letterpress, operation, phase]`.
 Measurements include monotonic duration and bounded sizes/counts. Metadata may
 include profile, artifact version, result class, diagnostic codes, and compiler
 availability. Source, output, values, tenant IDs, template IDs, locale, and

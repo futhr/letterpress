@@ -80,6 +80,18 @@ defmodule Letterpress.PublicAPITest do
       "LP_INPUT_INVALID"
     )
 
+    assert_error_code(
+      Letterpress.extract_translation_units("text/liquid@1", text_source(), text_schema(),
+        subject: "Not accepted"
+      ),
+      "LP_OPTIONS_INVALID"
+    )
+
+    assert_error_code(
+      Letterpress.localize("text/liquid@1", text_source(), text_schema(), %{}),
+      "LP_OPTIONS_INVALID"
+    )
+
     assert_error_code(Letterpress.format("text/liquid@1", :source), "LP_SOURCE_INVALID")
     assert_error_code(Letterpress.format(:profile, "source"), "LP_PROFILE_INVALID")
   end

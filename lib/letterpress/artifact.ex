@@ -36,6 +36,7 @@ defmodule Letterpress.Artifact do
   @hash_pattern ~r/\A[0-9a-f]{64}\z/
   @semantic_version_pattern ~r/\A\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?\z/
   @delivery_contexts ~w(text html_text html_attribute url subject none)
+  @translation_channels ~w(html subject text)
 
   @typedoc "A verified version-1 compiled artifact."
   @type t :: %__MODULE__{
@@ -361,7 +362,7 @@ defmodule Letterpress.Artifact do
 
   defp valid_translation_unit?(unit, source_hash) when is_map(unit) do
     required = ~w(id context source range source_hash)
-    allowed = required ++ ~w(description placeholders)
+    allowed = required ++ ~w(channel description placeholders)
 
     valid_translation_shape?(unit, required, allowed) and
       valid_translation_identity?(unit, source_hash) and valid_translation_optional?(unit)
@@ -376,8 +377,18 @@ defmodule Letterpress.Artifact do
   defp valid_translation_identity?(unit, source_hash) do
     is_binary(unit["id"]) and Regex.match?(~r/\A[0-9a-f]{24}\z/, unit["id"]) and
       unit["context"] in @delivery_contexts and is_binary(unit["source"]) and
-      unit["source_hash"] == source_hash and valid_range?(unit["range"])
+      valid_translation_source_hash?(unit, source_hash) and valid_range?(unit["range"])
   end
+
+  defp valid_translation_source_hash?(%{"channel" => channel, "source_hash" => hash}, _)
+       when channel in @translation_channels do
+    is_binary(hash) and Regex.match?(@hash_pattern, hash)
+  end
+
+  defp valid_translation_source_hash?(%{"channel" => _, "source_hash" => _}, _), do: false
+
+  defp valid_translation_source_hash?(%{"source_hash" => hash}, source_hash),
+    do: hash == source_hash
 
   defp valid_translation_optional?(unit) do
     (not Map.has_key?(unit, "description") or is_binary(unit["description"])) and

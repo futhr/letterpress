@@ -25,6 +25,99 @@ defmodule Letterpress.TranslationTest do
     assert translated =~ "Hej {{ name }}"
   end
 
+  test "extracts and localizes every email channel atomically" do
+    source = email_source()
+    subject = "Welcome {{ name }}"
+    text = "Hello {{ name }}"
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{"name" => %{"type" => "string", "context" => "text"}}
+    }
+
+    assert {:ok, units, []} =
+             Letterpress.extract_translation_units(
+               "email/mjml-liquid@1",
+               source,
+               schema,
+               subject: subject,
+               text: text
+             )
+
+    channels =
+      units
+      |> Enum.map(& &1["channel"])
+      |> Enum.sort()
+
+    unit_ids =
+      units
+      |> Enum.map(& &1["id"])
+      |> Enum.uniq()
+
+    assert channels == ["html", "subject", "text"]
+    assert length(unit_ids) == 3
+
+    translations =
+      Map.new(units, fn unit ->
+        translated =
+          case unit["channel"] do
+            "html" -> "Hej {{ name }}"
+            "subject" -> "Välkommen {{ name }}"
+            "text" -> "Hej {{ name }}"
+          end
+
+        {unit["id"], translated}
+      end)
+
+    assert {:ok,
+            %{
+              source: localized_source,
+              subject: "Välkommen {{ name }}",
+              text: "Hej {{ name }}"
+            }, []} =
+             Letterpress.localize(
+               "email/mjml-liquid@1",
+               source,
+               schema,
+               translations,
+               subject: subject,
+               text: text
+             )
+
+    assert localized_source =~ "Hej {{ name }}"
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile(
+               "email/mjml-liquid@1",
+               localized_source,
+               schema,
+               subject: "Välkommen {{ name }}",
+               text: "Hej {{ name }}"
+             )
+
+    artifact_channels =
+      artifact.translation_units
+      |> Enum.map(& &1["channel"])
+      |> Enum.sort()
+
+    assert artifact_channels == ["html", "subject", "text"]
+
+    assert {:ok, encoded} = Letterpress.encode_artifact(artifact)
+    assert {:ok, ^artifact} = Letterpress.decode_artifact(encoded)
+
+    assert {:error, diagnostics} =
+             Letterpress.localize(
+               "email/mjml-liquid@1",
+               source,
+               schema,
+               Map.delete(translations, hd(units)["id"]),
+               subject: subject,
+               text: text
+             )
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_TRANSLATION_MISSING"))
+  end
+
   test "missing units and changed placeholders fail closed" do
     source = email_source()
 

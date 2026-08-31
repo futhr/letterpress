@@ -32,7 +32,7 @@ defmodule Letterpress.Telemetry do
       )
   """
 
-  @operations ~w(discover analyze compile render format apply_translations)a
+  @operations ~w(discover analyze compile render format apply_translations localize)a
 
   @doc """
   Runs a supported operation with start, stop, and exception telemetry.

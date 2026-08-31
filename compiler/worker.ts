@@ -71,6 +71,12 @@ interface Analysis {
   translation_units: JsonObject[]
 }
 
+interface ChannelAnalyses {
+  source: Analysis
+  subject: Analysis | null
+  text: Analysis | null
+}
+
 interface Sentinel {
   raw: string
   sourceContext: string
@@ -169,10 +175,12 @@ function discoverPayload(payload: JsonObject): JsonObject {
 function analyzePayload(payload: JsonObject): JsonObject {
   const profile = requireString(payload.profile, "profile")
   const source = requireString(payload.source, "source")
+  const subject = optionalString(payload.subject)
+  const text = optionalString(payload.text)
   const schema = requireObject(payload.schema, "schema")
   const documentVersion = optionalInteger(payload.document_version, 0)
-  const analysis = analyze(profile, source, schema, documentVersion)
-  return publicAnalysis(analysis)
+  const analyses = analyzeChannels(profile, source, subject, text, schema, documentVersion)
+  return publicAnalysis(mergeChannelAnalyses(analyses, schema, source, documentVersion))
 }
 
 async function compilePayload(payload: JsonObject): Promise<JsonObject> {
@@ -183,27 +191,15 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
   const schema = requireObject(payload.schema, "schema")
   const compileValues = optionalObject(payload.compile_values)
   const documentVersion = optionalInteger(payload.document_version, 0)
-  const analysis = analyze(profile, source, schema, documentVersion, undefined, false)
-  const subjectAnalysis =
-    subject === null
-      ? null
-      : analyze("text/liquid@1", subject, schema, documentVersion, "subject", false)
-  const textAnalysis =
-    text === null ? null : analyze("text/liquid@1", text, schema, documentVersion, undefined, false)
-  const initialDiagnostics = [
-    ...analysis.diagnostics,
-    ...(subjectAnalysis?.diagnostics ?? []),
-    ...(textAnalysis?.diagnostics ?? []),
-    ...unusedSchemaDiagnostics(
-      [analysis, subjectAnalysis, textAnalysis],
-      schema,
-      source,
-      documentVersion,
-    ),
-  ]
+  const analyses = analyzeChannels(profile, source, subject, text, schema, documentVersion)
+  const analysis = analyses.source
+  const subjectAnalysis = analyses.subject
+  const textAnalysis = analyses.text
+  const mergedAnalysis = mergeChannelAnalyses(analyses, schema, source, documentVersion)
+  const initialDiagnostics = mergedAnalysis.diagnostics
 
   if (initialDiagnostics.some((item) => item.severity === "error")) {
-    return { diagnostics: initialDiagnostics, analysis: publicAnalysis(analysis) }
+    return { diagnostics: initialDiagnostics, analysis: publicAnalysis(mergedAnalysis) }
   }
 
   const sourceHash = sha256(source)
@@ -230,13 +226,13 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     ...preparedText.diagnostics,
   ]
   if (diagnostics.some((item) => item.severity === "error")) {
-    return { diagnostics, analysis: publicAnalysis(analysis) }
+    return { diagnostics, analysis: publicAnalysis(mergedAnalysis) }
   }
 
   if (profile === "text/liquid@1") {
     return {
       diagnostics,
-      analysis: publicAnalysis(analysis),
+      analysis: publicAnalysis(mergedAnalysis),
       compiled: {
         html: null,
         text: restoreSentinels(
@@ -268,7 +264,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
 
     return {
       diagnostics: [...diagnostics, ...restored.diagnostics],
-      analysis: publicAnalysis(analysis),
+      analysis: publicAnalysis(mergedAnalysis),
       compiled: {
         html: restored.output,
         text: null,
@@ -307,7 +303,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     if (mjmlDiagnostics.length > 0) {
       return {
         diagnostics: [...diagnostics, ...mjmlDiagnostics],
-        analysis: publicAnalysis(analysis),
+        analysis: publicAnalysis(mergedAnalysis),
       }
     }
 
@@ -321,7 +317,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     )
     return {
       diagnostics: [...diagnostics, ...restored.diagnostics],
-      analysis: publicAnalysis(analysis),
+      analysis: publicAnalysis(mergedAnalysis),
       compiled: {
         html: restored.output,
         text: preparedText.output,
@@ -350,7 +346,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
           {},
         ),
       ],
-      analysis: publicAnalysis(analysis),
+      analysis: publicAnalysis(mergedAnalysis),
     }
   }
 }
@@ -374,12 +370,65 @@ async function formatPayload(payload: JsonObject): Promise<JsonObject> {
 function applyTranslationsPayload(payload: JsonObject): JsonObject {
   const profile = requireString(payload.profile, "profile")
   const source = requireString(payload.source, "source")
+  const subject = optionalString(payload.subject)
+  const text = optionalString(payload.text)
   const schema = requireObject(payload.schema, "schema")
   const translations = requireObject(payload.translations, "translations")
   const documentVersion = optionalInteger(payload.document_version, 0)
+  const analyses = analyzeChannels(profile, source, subject, text, schema, documentVersion)
+  const mergedAnalysis = mergeChannelAnalyses(analyses, schema, source, documentVersion)
+  const sourceResult = applyChannelTranslations(
+    source,
+    analyses.source,
+    translations,
+    documentVersion,
+  )
+  const subjectResult = applyOptionalChannelTranslations(
+    subject,
+    analyses.subject,
+    translations,
+    documentVersion,
+  )
+  const textResult = applyOptionalChannelTranslations(
+    text,
+    analyses.text,
+    translations,
+    documentVersion,
+  )
+  const diagnostics = [
+    ...mergedAnalysis.diagnostics,
+    ...sourceResult.diagnostics,
+    ...subjectResult.diagnostics,
+    ...textResult.diagnostics,
+  ]
+  const failed = diagnostics.some((item) => item.severity === "error")
+
+  return {
+    source: failed ? source : sourceResult.source,
+    subject: failed ? subject : subjectResult.source,
+    text: failed ? text : textResult.source,
+    diagnostics,
+  }
+}
+
+function applyOptionalChannelTranslations(
+  source: string | null,
+  analysis: Analysis | null,
+  translations: JsonObject,
+  documentVersion: number,
+): { source: string | null; diagnostics: Diagnostic[] } {
+  if (source === null || analysis === null) return { source: null, diagnostics: [] }
+  return applyChannelTranslations(source, analysis, translations, documentVersion)
+}
+
+function applyChannelTranslations(
+  source: string,
+  analysis: Analysis,
+  translations: JsonObject,
+  documentVersion: number,
+): { source: string; diagnostics: Diagnostic[] } {
   const sourceHash = sha256(source)
-  const analysis = analyze(profile, source, schema, documentVersion)
-  const diagnostics = [...analysis.diagnostics]
+  const diagnostics: Diagnostic[] = []
   const replacements: { start: number; end: number; value: string }[] = []
 
   for (const unit of analysis.translation_units) {
@@ -739,6 +788,79 @@ function analyze(
   }
 
   return { ast, diagnostics, variables, dependencies, tags, translation_units: translationUnits }
+}
+
+function analyzeChannels(
+  profile: string,
+  source: string,
+  subject: string | null,
+  text: string | null,
+  schema: JsonObject,
+  documentVersion: number,
+): ChannelAnalyses {
+  const sourceAnalysis = analyze(profile, source, schema, documentVersion, undefined, false)
+  if (profile !== "email/mjml-liquid@1") {
+    return { source: sourceAnalysis, subject: null, text: null }
+  }
+
+  return {
+    source: channelizeTranslationUnits(sourceAnalysis, profile, "html"),
+    subject:
+      subject === null
+        ? null
+        : channelizeTranslationUnits(
+            analyze("text/liquid@1", subject, schema, documentVersion, "subject", false),
+            profile,
+            "subject",
+          ),
+    text:
+      text === null
+        ? null
+        : channelizeTranslationUnits(
+            analyze("text/liquid@1", text, schema, documentVersion, undefined, false),
+            profile,
+            "text",
+          ),
+  }
+}
+
+function channelizeTranslationUnits(
+  analysis: Analysis,
+  profile: string,
+  channel: "html" | "subject" | "text",
+): Analysis {
+  return {
+    ...analysis,
+    translation_units: analysis.translation_units.map((unit) => ({
+      ...unit,
+      id: sha256(`${profile}\0${channel}\0${String(unit.id ?? "")}`).slice(0, 24),
+      channel,
+      context: channel === "subject" ? "subject" : unit.context,
+    })),
+  }
+}
+
+function mergeChannelAnalyses(
+  analyses: ChannelAnalyses,
+  schema: JsonObject,
+  source: string,
+  documentVersion: number,
+): Analysis {
+  const present = [analyses.source, analyses.subject, analyses.text].filter(
+    (analysis): analysis is Analysis => analysis !== null,
+  )
+
+  return {
+    ast: analyses.source.ast,
+    diagnostics: [
+      ...present.flatMap((analysis) => analysis.diagnostics),
+      ...unusedSchemaDiagnostics(present, schema, source, documentVersion),
+    ],
+    variables: present.flatMap((analysis) => analysis.variables),
+    dependencies: present.flatMap((analysis) => analysis.dependencies),
+    tags: present.flatMap((analysis) => analysis.tags),
+    translation_units: present.flatMap((analysis) => analysis.translation_units),
+  }
 }
 
 function unusedSchemaDiagnostics(

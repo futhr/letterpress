@@ -47,6 +47,11 @@ defmodule Letterpress do
     compiler_pool: [type: :atom, default: Letterpress.Compiler.Pool],
     compiler_timeout: [type: :pos_integer, default: 15_000]
   ]
+  @analysis_options @base_options ++
+                      [
+                        subject: [type: :string],
+                        text: [type: :string]
+                      ]
   @compile_options @base_options ++
                      [
                        subject: [type: :string],
@@ -141,7 +146,9 @@ defmodule Letterpress do
   persistable delivery artifact.
 
   Accepts the same `:document_version`, `:compiler_pool`, and
-  `:compiler_timeout` options as `discover/3`.
+  `:compiler_timeout` options as `discover/3`. The email profile also accepts
+  `:subject` and `:text`, which are analyzed with the primary MJML source as
+  one atomic template.
   """
   @spec analyze(String.t(), String.t(), map(), keyword()) ::
           {:ok, map(), [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
@@ -208,8 +215,11 @@ defmodule Letterpress do
   Returns the stable translatable units discovered in source.
 
   Each unit carries an ID, source range, context, source hash, and original
-  text. Unit IDs are derived from the source structure and are inputs to
-  `apply_translations/5`.
+  text. Email units additionally carry a `"channel"` of `"html"`,
+  `"subject"`, or `"text"`. Pass email `:subject` and `:text` sources as
+  options to extract all configured channels in one call. Unit IDs are derived
+  from the profile, channel, and source structure and are inputs to
+  `localize/5`.
   """
   @spec extract_translation_units(String.t(), String.t(), map(), keyword()) ::
           {:ok, [map()], [Diagnostic.t()]} | {:error, [Diagnostic.t()]}
@@ -236,6 +246,28 @@ defmodule Letterpress do
   def apply_translations(profile, source, schema, translations, opts \\ []) do
     Telemetry.span(:apply_translations, profile_name(profile), input_size(source), fn ->
       do_apply_translations(profile, source, schema, translations, opts)
+    end)
+  end
+
+  @doc """
+  Applies translations to every configured email channel atomically.
+
+  Pass the original email `:subject` and `:text` sources as options. The
+  translation object is keyed by the channel-aware unit IDs returned from
+  `extract_translation_units/4`. Success returns all localized authoring
+  sources as `%{source: source, subject: subject, text: text}`. If any channel
+  is missing a unit or changes protected Liquid/markup, no localized source is
+  returned.
+
+  Use `apply_translations/5` for the source-only HTML and text profiles.
+  """
+  @spec localize(String.t(), String.t(), map(), map(), keyword()) ::
+          {:ok, %{source: String.t(), subject: String.t() | nil, text: String.t() | nil},
+           [Diagnostic.t()]}
+          | {:error, [Diagnostic.t()]}
+  def localize(profile, source, schema, translations, opts \\ []) do
+    Telemetry.span(:localize, profile_name(profile), input_size(source), fn ->
+      do_localize(profile, source, schema, translations, opts)
     end)
   end
 
@@ -312,7 +344,8 @@ defmodule Letterpress do
 
   defp do_analyze(profile, source, schema, opts) do
     with :ok <- validate_source(source),
-         {:ok, opts} <- validate_options(opts, @base_options),
+         {:ok, opts} <- validate_options(opts, @analysis_options),
+         :ok <- validate_compile_channels(profile, opts),
          :ok <- Profile.validate(profile),
          {:ok, normalized_schema} <- Schema.normalize(schema),
          payload = compiler_payload(profile, source, normalized_schema, opts),
@@ -353,12 +386,45 @@ defmodule Letterpress do
     end
   end
 
+  defp do_localize(profile, source, schema, translations, opts) do
+    with :ok <- validate_source(source),
+         {:ok, translations} <- normalize_json_map(translations),
+         {:ok, opts} <- validate_options(opts, @analysis_options),
+         :ok <- Profile.validate(profile),
+         :ok <- validate_localize_profile(profile),
+         {:ok, normalized_schema} <- Schema.normalize(schema),
+         payload =
+           profile
+           |> compiler_payload(source, normalized_schema, opts)
+           |> Map.put("translations", translations),
+         {:ok, result} <- compiler_request(:apply_translations, payload, opts) do
+      finish_localization(result)
+    else
+      {:error, diagnostics} when is_list(diagnostics) ->
+        {:error, diagnostics}
+
+      {:error, reason} ->
+        {:error, [Diagnostic.system(reason, profile_name(profile), source, opts)]}
+    end
+  end
+
   defp finish_translation(result) do
     diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
 
     if Diagnostic.errors?(diagnostics),
       do: {:error, diagnostics},
       else: {:ok, result["source"], diagnostics}
+  end
+
+  defp finish_localization(result) do
+    diagnostics = Diagnostic.from_maps(result["diagnostics"] || [])
+
+    if Diagnostic.errors?(diagnostics) do
+      {:error, diagnostics}
+    else
+      {:ok, %{source: result["source"], subject: result["subject"], text: result["text"]},
+       diagnostics}
+    end
   end
 
   defp compiler_request(operation, payload, opts) do
@@ -399,6 +465,18 @@ defmodule Letterpress do
   end
 
   defp validate_compile_channels(_, _), do: :ok
+
+  defp validate_localize_profile("email/mjml-liquid@1"), do: :ok
+
+  defp validate_localize_profile(_) do
+    {:error,
+     [
+       Diagnostic.simple(
+         "LP_OPTIONS_INVALID",
+         "Atomic localization is available only for the email profile"
+       )
+     ]}
+  end
 
   defp normalize_json_map(value) do
     case JSON.normalize_object(value) do

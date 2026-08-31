@@ -105,6 +105,12 @@ Render every channel atomically from the stored artifact at delivery time:
   })
 ```
 
+Email localization uses the same atomic boundary. Extract channel-aware units
+with the original `:subject` and `:text`, apply provider results with
+`Letterpress.localize/5`, then compile the returned three sources as one locale
+artifact. A missing or structurally invalid unit rejects the complete localized
+result rather than mixing locales between HTML, subject, and plain text.
+
 See the [quick-start guide](docs/guides/quickstart.md) for the full lifecycle.
 
 ## Livebooks

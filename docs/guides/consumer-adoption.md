@@ -22,6 +22,11 @@ system. Old and new application versions must coexist until every active
 publication has a verified artifact and delivery no longer reads the legacy
 field.
 
-Translation providers receive only extracted translation units. Apply their
-responses with `Letterpress.apply_translations/5`, compile the resulting
-locale source, and let the consumer decide review and publication policy.
+Translation providers receive only extracted translation units. For email,
+pass the original subject and plain-text alternative while extracting, then
+apply provider responses with `Letterpress.localize/5`. It returns the MJML,
+subject, and text authoring sources together or rejects the entire locale when
+any unit is missing or changes protected structure. Compile those three
+localized sources into one artifact. `Letterpress.apply_translations/5`
+remains the source-only path for the HTML and text profiles. The consumer still
+decides locale completeness, review, and publication policy.
