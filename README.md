@@ -28,8 +28,7 @@ advisory diagnostic codes. Browser feedback never authorizes publication.
 
 ## Installation
 
-Letterpress is preparing its first registry release. The dependency below is
-the target for version 0.1.0:
+Add Letterpress to your dependencies:
 
 ```elixir
 def deps do

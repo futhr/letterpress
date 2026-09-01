@@ -11,5 +11,4 @@ defense in depth rather than a sandbox. Consumers remain responsible for
 author authorization, tenant isolation, provider policy, and workload
 isolation.
 
-Supported releases receive security fixes. The project is currently
-pre-release; no registry version has been published yet.
+Supported releases receive security fixes.

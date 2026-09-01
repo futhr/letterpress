@@ -6,8 +6,7 @@ Source analysis, compilation, formatting, and translation run through the
 bundled Node worker; only the email profile invokes MJML. Delivery rendering is
 pure BEAM.
 
-The project is preparing its first registry release. This dependency targets
-version 0.1.0:
+Add Letterpress to your dependencies:
 
 ```elixir
 {:letterpress, "~> 0.1"}
