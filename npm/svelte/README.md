@@ -1,11 +1,11 @@
 # `@letterpress/svelte`
 
-An unopinionated Svelte 5 shell around CodeMirror and `@letterpress/language`. It
+A Svelte 5 editor component built on CodeMirror and `@letterpress/language`. It
 owns editor lifecycle, controlled source updates, profile/schema/diagnostic
 reconfiguration, keyboard save/format commands, read-only state, focus, and
-accessibility. Standard line-number, folding, lint, matching, indentation,
-completion, search, wrapping, and placeholder behavior is configurable through
-props. It does not call a backend or make publication decisions.
+accessibility. Line numbers, folding, lint, matching, indentation, completion,
+search, wrapping, and placeholder behavior are configurable through props. It
+does not call a backend or make publication decisions.
 
 The bundled editor theme is a complete light/dark reference pair. Override its
 `--letterpress-editor-*` CSS properties or build a paired product theme with
@@ -30,11 +30,7 @@ peer-deduplicated hosts.
   bind:source
   profile="email/mjml-liquid@1"
   {schema}
-  {diagnostics}
-  {documentVersion}
-  {sourceHash}
   colorScheme="light"
-  onSave={saveDraft}
 />
 ```
 

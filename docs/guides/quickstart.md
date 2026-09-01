@@ -2,9 +2,12 @@
 
 Letterpress has two separate jobs: compile a template while an operator is
 authoring it, then render the stored artifact when a notification is sent.
-Node and MJML are required for compilation. Delivery rendering is pure BEAM.
+Source analysis, compilation, formatting, and translation run through the
+bundled Node worker; only the email profile invokes MJML. Delivery rendering is
+pure BEAM.
 
-Add the Hex dependency:
+The project is preparing its first registry release. This dependency targets
+version 0.1.0:
 
 ```elixir
 {:letterpress, "~> 0.1"}

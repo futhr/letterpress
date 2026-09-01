@@ -1,6 +1,6 @@
 # Letterpress
 
-**Safe, deterministic notification templates for Elixir.**
+**Compile MJML and Liquid once. Render safely in pure BEAM.**
 
 [![Hex.pm](https://img.shields.io/hexpm/v/letterpress.svg)](https://hex.pm/packages/letterpress)
 [![Docs](https://img.shields.io/badge/docs-hexdocs-blue.svg)](https://hexdocs.pm/letterpress)
@@ -17,17 +17,19 @@
 
 ---
 
-Letterpress compiles profile-based MJML, bounded HTML, and plain-text Liquid
-source into an immutable, portable artifact, then renders that artifact in pure
-BEAM code at delivery time. Its CodeMirror and Svelte 5 packages use the same
-generated grammar, diagnostics, schema, and completions without making the
-browser authoritative.
+Letterpress is the language boundary for notification templates in Elixir. It
+compiles restricted MJML and Liquid source into immutable artifacts during
+authoring, then renders those artifacts in bounded pure-BEAM code during
+delivery. Its CodeMirror 6 language package and Svelte 5 editor use the
+generated backend contract for profile metadata, completion vocabulary, and
+advisory diagnostic codes. Browser feedback never authorizes publication.
 
 ---
 
 ## Installation
 
-Add `letterpress` to your dependencies:
+Letterpress is preparing its first registry release. The dependency below is
+the target for version 0.1.0:
 
 ```elixir
 def deps do
@@ -37,10 +39,11 @@ def deps do
 end
 ```
 
-Node 22 or newer is required on nodes that compile MJML templates. Node 22 is
-the supported floor; local development and the full CI lane use Node 24 LTS,
-while the portability matrix covers both releases. Nodes that only render
-previously compiled artifacts run entirely on the BEAM.
+Node 22 or newer is required on every authoring node because all profiles use
+the bundled compiler worker for analysis, compilation, formatting, and
+translation operations. Node 22 is the supported floor; local development and
+the full CI lane use Node 24 LTS, while the portability matrix covers both
+releases. Nodes that only render verified artifacts run entirely on the BEAM.
 
 Letterpress is a library application: it does not add processes to your OTP
 tree. On authoring nodes, add the compiler pool to your own supervisor:
@@ -124,8 +127,8 @@ See the [quick-start guide](docs/guides/quickstart.md) for the full lifecycle.
 - [Artifacts and translations](notebooks/artifacts-and-translations.livemd)
   covers translation placeholders and canonical artifact round trips.
 
-The notebooks are published in HexDocs. ExUnit evaluates their code cells and
-checks saved outputs against the current package version.
+The notebooks are included in the HexDocs build. ExUnit evaluates their code
+cells and checks saved outputs against the current package version.
 
 ---
 

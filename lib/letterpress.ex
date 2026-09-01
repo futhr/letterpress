@@ -142,8 +142,8 @@ defmodule Letterpress do
   Validates source against a typed schema without creating an artifact.
 
   Analysis performs profile parsing, schema checks, context checks, dependency
-  discovery, and linting. Use `compile/4` when the source is ready to become a
-  persistable delivery artifact.
+  discovery, and non-error schema diagnostics. Use `compile/4` when the source
+  is ready to become a persistable delivery artifact.
 
   Accepts the same `:document_version`, `:compiler_pool`, and
   `:compiler_timeout` options as `discover/3`. The email profile also accepts
@@ -215,11 +215,10 @@ defmodule Letterpress do
   Returns the stable translatable units discovered in source.
 
   Each unit carries an ID, source range, context, source hash, and original
-  text. Email units additionally carry a `"channel"` of `"html"`,
-  `"subject"`, or `"text"`. Pass email `:subject` and `:text` sources as
-  options to extract all configured channels in one call. Unit IDs are derived
-  from the profile, channel, and source structure and are inputs to
-  `localize/5`.
+  text. Email units also carry a `"channel"` of `"html"`, `"subject"`, or
+  `"text"`. Pass email `:subject` and `:text` sources as options to extract all
+  configured channels in one call. Unit IDs are derived from the profile,
+  channel, and source structure and are inputs to `localize/5`.
   """
   @spec extract_translation_units(String.t(), String.t(), map(), keyword()) ::
           {:ok, [map()], [Diagnostic.t()]} | {:error, [Diagnostic.t()]}

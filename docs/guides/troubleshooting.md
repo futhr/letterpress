@@ -15,9 +15,10 @@ are ignored.
 
 ## A value is rejected in one location
 
-Inspect the schema context. A value declared for `url` cannot be emitted as
-HTML text, and CSS/color values must be compile-phase. Define separate
-variables when the same business value needs distinct output contexts.
+Inspect the schema context. A `url` value may appear in a URL-bearing attribute
+or be displayed as text, HTML text, or a subject, but a general `text` value
+cannot enter a URL sink. CSS and color values must be compile-phase. Define
+separate variables for context combinations outside the compatibility rules.
 
 ## An artifact no longer decodes
 

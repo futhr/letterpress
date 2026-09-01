@@ -6,9 +6,9 @@ their hashes, installs those exact tarballs in throwaway Hex/npm consumers,
 and only then enters the protected `release` environment.
 
 Before the first release, configure protected `main` and `v*` rules, a
-reviewer-protected `release` environment, npm trusted publishing, and a
-least-privilege Hex API key. Do not put registry credentials in repository or
-general CI secrets.
+reviewer-protected `release` environment, a least-privilege npm automation
+token, and a least-privilege Hex API key. Store registry credentials only as
+secrets available to the protected release environment.
 
 The local dry run is:
 
@@ -22,8 +22,9 @@ node scripts/release.mjs publish --allow-untagged --artifact-dir dist/release --
 
 For the first release, remove the placeholder changelog and let GitOps create
 the initial history in the release commit. Update the Mix and both npm package
-versions together. Dispatch a dry-run workflow from that commit before pushing
-the tag.
+versions together. Remove the pre-release notices from `README.md`,
+`docs/guides/quickstart.md`, and `SECURITY.md`. Dispatch a dry-run workflow from
+that commit before pushing the tag.
 
 Publication is resumable. Before the first registry write, the orchestrator
 checks every target. Existing versions are skipped only when their bytes match

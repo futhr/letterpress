@@ -3,9 +3,9 @@ defmodule Letterpress.Artifact do
   The immutable, portable result of compiling a notification template.
 
   An artifact contains compiled subject, HTML, and text templates together with
-  the normalized schema, compiler provenance, source maps, lint results, and
-  hashes that bind those fields together. It contains no recipient values or
-  other resolved delivery data.
+  normalized variable definitions, compiler provenance, source maps, non-error
+  diagnostics, and hashes that bind those fields together. It contains no
+  recipient values or other resolved delivery data.
 
   Persist or transport artifacts through `encode/1` and `decode/1`. Decoding
   rejects missing fields, extra fields, unsupported versions, malformed

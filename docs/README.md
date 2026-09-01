@@ -8,7 +8,7 @@ Letterpress documentation is split by authority and lifecycle.
 | `docs/adr/` | Durable architecture choices and rejected alternatives | No |
 | `docs/specs/` | Versioned, normative package and wire contracts | Yes |
 | `docs/guides/` | Explanations and runnable usage paths | No |
-| `notebooks/` | Executable Livebook tutorials published in HexDocs | No |
+| `notebooks/` | Executable Livebook tutorials included in HexDocs | No |
 | `conformance/` | Cross-runtime fixtures that execute contract claims | Verifies only |
 | `bench/` | Reproducible performance scenarios and recorded results | No |
 

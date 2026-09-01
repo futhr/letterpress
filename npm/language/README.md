@@ -1,15 +1,19 @@
 # `@letterpress/language`
 
-Framework-neutral CodeMirror 6 language services for Letterpress's immutable
+Framework-neutral CodeMirror 6 language services for Letterpress's versioned
 `email/mjml-liquid@1`, `html/liquid@1`, and `text/liquid@1` profiles. The
-generated contract, MJML/HTML metadata, completion, folding, formatting, and
-local diagnostics mirror the authoritative Hex compiler; publication must
-still use the backend.
+generated backend contract supplies profile and element metadata, completion
+vocabulary, and diagnostic codes. Pinned CodeMirror parsers and the Shopify
+Liquid formatter provide the browser implementation. The browser models a
+smaller advisory diagnostic set; publication still requires the Elixir
+compiler.
 
 The MJML + Liquid formatter is lazy-loaded as a browser-only bundle. Consumers
 do not need to install Prettier or the Shopify formatter plugin.
 
-See the repository README and public contract for setup and guarantees.
+See the [repository README](https://github.com/futhr/letterpress) and
+[public contract](https://github.com/futhr/letterpress/blob/main/docs/specs/LP.01-letterpress-contract.md)
+for the package boundary and backend guarantees.
 
 ```ts
 import { letterpressLanguage } from "@letterpress/language"
@@ -23,9 +27,6 @@ const extension = letterpressLanguage({
       action_url: { type: "url", context: "url" },
     },
   },
-  documentVersion: 12,
-  sourceHash: "backend-source-sha256",
-  serverDiagnostics,
 })
 ```
 
