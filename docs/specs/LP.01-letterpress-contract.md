@@ -4,7 +4,7 @@ document_id: "LP.01"
 status: "Accepted for implementation"
 version: 1
 created: "2026-08-30"
-last_updated: "2026-08-30"
+last_updated: "2026-09-01"
 ---
 
 # LP.01 - Letterpress compiler, runtime, and editor contract
@@ -370,6 +370,17 @@ Hand-maintained duplicate registries are forbidden.
 - deterministic formatting through the pinned Shopify Liquid formatter plus
   Letterpress profile rules;
 - framework-neutral CodeMirror 6 extensions and typed APIs.
+
+Local diagnostics are enabled by default. A consumer whose authoring source
+contains host-owned preprocessing syntax may set `clientDiagnostics: false` on
+the language extension or editor component. This disables only Letterpress's
+local lint pass; parsing, highlighting, completion, folding, formatting, and
+mapped server diagnostics remain available. The consumer must preprocess the
+authoring source deterministically before authoritative analysis or
+compilation, and must associate returned diagnostics with the exact authoring
+source hash or document version that produced the preprocessed input. A client
+must discard diagnostics for a stale hash or version. Disabling local
+diagnostics never permits publication without backend approval.
 
 `@letterpress/svelte` provides an unstyled Svelte 5 component that creates and
 destroys CodeMirror safely, supports controlled source/schema/diagnostics,
