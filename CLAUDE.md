@@ -93,8 +93,9 @@ browser
 - `docs/adr/` records durable architecture choices and rejected alternatives.
   An ADR must add rationale beyond the spec and link the relevant research and
   normative sections. It must not become a second copy of the contract.
-- `docs/guides/` teaches released behavior without inventing new guarantees.
-- `notebooks/` contains runnable Livebook tutorials published through HexDocs.
+- `docs/guides/` teaches implemented public behavior without inventing new
+  guarantees.
+- `notebooks/` contains runnable Livebook tutorials included in HexDocs.
   Notebook code and saved outputs are checked by ExUnit.
 - `bench/` contains Benchee scenarios and checked-in result summaries. Results
   are evidence for the recorded machine and run mode, never universal claims.

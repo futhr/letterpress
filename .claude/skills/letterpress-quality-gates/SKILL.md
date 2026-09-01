@@ -15,7 +15,7 @@ mix check
 
 `mix check` must include strict Credo, documentation warnings as errors,
 audits, Dialyzer, ExUnit coverage, frontend lint/types/tests, package exports,
-shared conformance, host-boundary checks, and release smoke tests.
+shared conformance, host-boundary checks, and release-contract tests.
 
 Run `mix bench.smoke` only when benchmark code or performance prose changed.
 Benchmark output is machine-specific and is not a deterministic completion

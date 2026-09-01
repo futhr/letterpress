@@ -26,7 +26,7 @@ alter delivery semantics.
 ### Letterpress owns
 
 - versioned profiles and their grammar, feature allow-lists, and limits;
-- parsing, analysis, formatting, compatibility lint, and diagnostics;
+- parsing, analysis, formatting, and diagnostics;
 - official MJML compilation through a supervised bundled Node worker;
 - a restricted Liquid runtime with context-aware output handling and budgets;
 - typed variable schemas and compile/delivery phases;
@@ -184,7 +184,7 @@ For `email/mjml-liquid@1` the authoritative pipeline is:
 9. restore every emitted occurrence with a normalized Liquid expression and
    the internal final filter for that occurrence's actual output context;
 10. validate the HTML Liquid artifact and source map;
-11. run compatibility and accessibility lint;
+11. retain non-error analysis diagnostics as artifact lint metadata;
 12. canonicalize and hash the artifact.
 
 Any sentinel collision, loss, unexpected duplication outside a compiler-known
@@ -202,8 +202,9 @@ compilation.
 
 The Hex package contains one prebuilt Node bundle under `priv/compiler`. A
 supervised Elixir pool communicates over length-prefixed JSON frames. Each
-request has an opaque ID, operation, contract version, deadline, and bounded
-payload. Each response repeats the ID and returns a result or diagnostics.
+request has an opaque ID, operation, and bounded payload. The Elixir caller
+enforces the deadline, and the checked-in bundle embeds the generated contract.
+Each response repeats the ID and returns a result or a bounded error.
 
 Requirements:
 
@@ -300,7 +301,7 @@ Diagnostics use a versioned LSP-shaped JSON contract:
     "end": {"line": 0, "character": 4}
   },
   "severity": "error",
-  "code": "LP_MJML_UNKNOWN_TAG",
+  "code": "LP_MJML_UNKNOWN_ELEMENT",
   "source": "letterpress-mjml",
   "message": "Unknown MJML element mj-foo",
   "related": [],
@@ -448,28 +449,32 @@ arbitrary caller metadata are excluded.
 
 ## 14. Conformance and verification
 
-One fixture corpus is consumed by Elixir and JavaScript tests. It includes:
+One fixture corpus is consumed by Elixir and JavaScript tests. Its portable
+analysis cases cover all three profiles, representative MJML and HTML
+allow-list failures, unsafe static URLs, element-specific attributes,
+undeclared variables, forbidden filters, context mismatches, malformed Liquid,
+and loop-local scope. A browser package may implement a smaller advisory set,
+but any rule it models must agree with the backend diagnostic code.
 
-- every allowed and denied MJML element/attribute class;
-- Liquid output/filter/control grammar, nesting, whitespace, and malformed
-  delimiters;
-- sentinel collisions, loss, duplication, relocation, and Unicode positions;
-- whole-document text translation, Liquid-only text, and placeholder preservation;
-- all schema types, phases, contexts, nested objects/lists, and invalid values;
-- escaping and injection payloads for HTML, attributes, URLs, subjects, CSS,
-  and Liquid source;
-- compile/render budgets and worker crash/protocol recovery;
-- deterministic artifacts across the supported Node/OS matrix;
-- translation-unit identity and placeholder-preserving round trips;
-- formatter idempotence and parse-format-parse equivalence;
-- editor highlighting, completion, folding, diagnostics, accessibility, and
-  Svelte lifecycle behavior;
-- exact Hex/npm tarball installation in throwaway consumers.
+Owning unit suites provide the rest of the current proof:
 
-Property tests cover canonical JSON, schema normalization, artifact encode/
-decode, escaping, and bounded rendering. Fuzz corpora cover parser/protocol
-totality. Golden artifacts are versioned and updated only with an explicit
-contract decision.
+- compiler tests cover official MJML output, email channels, discovery,
+  formatting, worker recovery, named pools, frame limits, and timeouts;
+- sentinel tests cover loss, duplication, relocation, unsafe output positions,
+  and the modeled `mj-title` duplication;
+- schema, artifact, renderer, translation, diagnostic, telemetry, and JSON
+  tests cover their public boundaries and failure modes;
+- one StreamData property checks that map insertion order cannot change
+  canonical JSON bytes;
+- Vitest covers mixed parsing, completion, local and mapped diagnostics,
+  formatting, Svelte lifecycle, accessibility, and paired theme behavior;
+- notebook tests execute every code cell and compare saved output;
+- CI compares compiler-bundle hashes across Node 22 and 24 on Linux and macOS;
+- the release workflow packs one Hex tarball and two npm tarballs, then installs
+  those exact files in throwaway consumers.
+
+Future fuzz corpora, golden artifacts, or broader property coverage must be
+described as planned work until the corresponding files and gates exist.
 
 ## 15. Release model
 

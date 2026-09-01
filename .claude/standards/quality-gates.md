@@ -3,7 +3,7 @@
 `mix check` is the required completion gate. It covers warning-free Elixir
 compilation, formatting, strict Credo, documentation, audits, Dialyzer, ExUnit
 coverage, frontend lint and types, Vitest coverage, package exports,
-conformance, boundary checks, and release smoke tests.
+conformance, boundary checks, and release-contract tests.
 
 Run focused checks while iterating:
 
