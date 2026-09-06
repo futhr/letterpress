@@ -466,14 +466,26 @@ defmodule Letterpress do
   end
 
   defp validate_options(opts, schema) when is_list(opts) do
-    case NimbleOptions.validate(opts, schema) do
-      {:ok, validated} -> {:ok, validated}
-      {:error, _} -> {:error, [Diagnostic.simple("LP_OPTIONS_INVALID", "Options are invalid")]}
+    with true <- Keyword.keyword?(opts),
+         {:ok, validated} <- NimbleOptions.validate(opts, schema),
+         true <- valid_channel_encoding?(validated) do
+      {:ok, validated}
+    else
+      _ -> {:error, [Diagnostic.simple("LP_OPTIONS_INVALID", "Options are invalid")]}
     end
   end
 
   defp validate_options(_, _),
     do: {:error, [Diagnostic.simple("LP_OPTIONS_INVALID", "Options must be a keyword list")]}
+
+  defp valid_channel_encoding?(opts) do
+    Enum.all?([:subject, :text], fn channel ->
+      case Keyword.fetch(opts, channel) do
+        {:ok, source} -> String.valid?(source)
+        :error -> true
+      end
+    end)
+  end
 
   defp validate_source(source) when is_binary(source) do
     if String.valid?(source),

@@ -102,9 +102,11 @@ defmodule Letterpress.Renderer do
   defp validate_values(_, _, _), do: {:error, :invalid_render_values}
 
   defp validate_options(opts) when is_list(opts) do
-    case NimbleOptions.validate(opts, @options_schema) do
-      {:ok, validated} -> {:ok, validated}
-      {:error, _} -> {:error, :invalid_render_options}
+    with true <- Keyword.keyword?(opts),
+         {:ok, validated} <- NimbleOptions.validate(opts, @options_schema) do
+      {:ok, validated}
+    else
+      _ -> {:error, :invalid_render_options}
     end
   end
 

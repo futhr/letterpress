@@ -9,6 +9,27 @@ defmodule Letterpress.PublicAPITest do
   doctest Letterpress.Contract
   doctest Letterpress.Profile
 
+  test "malformed option lists return tagged errors" do
+    schema = %{"version" => 1, "variables" => %{}}
+    assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", "Hello", schema)
+
+    for opts <- [["invalid"], [{"timeout", 1}], [{:timeout, 1} | :invalid]] do
+      assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} =
+               Letterpress.compile("text/liquid@1", "Hello", schema, opts)
+
+      assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} = Letterpress.render(artifact, %{}, opts)
+    end
+  end
+
+  test "invalid UTF-8 email channels return option diagnostics" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    for opts <- [[subject: <<255>>], [text: <<255>>]] do
+      assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} =
+               Letterpress.compile("email/mjml-liquid@1", "<mjml></mjml>", schema, opts)
+    end
+  end
+
   test "invalid UTF-8 source returns diagnostics without sending it to a worker" do
     schema = %{"version" => 1, "variables" => %{}}
 
