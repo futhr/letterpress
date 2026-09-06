@@ -24,6 +24,10 @@ defmodule Letterpress.JSONTest do
     end
   end
 
+  test "rejects improper lists instead of raising during normalization" do
+    assert {:error, :invalid_json_object} = JSON.normalize_object(%{items: [1 | 2]})
+  end
+
   test "rejects structs, invalid keys and normalized-key collisions" do
     assert {:error, :invalid_json_object} = JSON.normalize_object(self())
     assert {:error, :invalid_json_object} = JSON.normalize_object(%{1 => "value"})

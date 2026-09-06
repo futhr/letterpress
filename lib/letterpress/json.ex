@@ -51,20 +51,7 @@ defmodule Letterpress.JSON do
     end)
   end
 
-  defp normalize(value) when is_list(value) do
-    result =
-      Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
-        case normalize(item) do
-          {:ok, normalized} -> {:cont, {:ok, [normalized | acc]}}
-          :error -> {:halt, :error}
-        end
-      end)
-
-    case result do
-      {:ok, reversed} -> {:ok, Enum.reverse(reversed)}
-      :error -> :error
-    end
-  end
+  defp normalize(value) when is_list(value), do: normalize_list(value, [])
 
   defp normalize(value) when is_binary(value),
     do: if(String.valid?(value), do: {:ok, value}, else: :error)
@@ -80,6 +67,17 @@ defmodule Letterpress.JSON do
   end
 
   defp normalize(_), do: :error
+
+  defp normalize_list([], acc), do: {:ok, Enum.reverse(acc)}
+
+  defp normalize_list([item | rest], acc) do
+    case normalize(item) do
+      {:ok, normalized} -> normalize_list(rest, [normalized | acc])
+      :error -> :error
+    end
+  end
+
+  defp normalize_list(_, _), do: :error
 
   defp normalize_key(key) when is_binary(key), do: normalize(key)
   defp normalize_key(key) when is_atom(key), do: {:ok, Atom.to_string(key)}
