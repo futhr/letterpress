@@ -9,6 +9,21 @@ defmodule Letterpress.PublicAPITest do
   doctest Letterpress.Contract
   doctest Letterpress.Profile
 
+  test "invalid UTF-8 source returns diagnostics without sending it to a worker" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    assert {:error, [%{code: "LP_SOURCE_INVALID"}]} =
+             Letterpress.compile("text/liquid@1", <<255>>, schema)
+
+    assert {:error, [%{code: "LP_SOURCE_INVALID"}]} =
+             Letterpress.analyze("text/liquid@1", <<255>>, schema)
+
+    assert {:error, [%{code: "LP_SOURCE_INVALID"}]} =
+             Letterpress.discover("text/liquid@1", <<255>>)
+
+    assert {:error, [%{code: "LP_SOURCE_INVALID"}]} = Letterpress.format("text/liquid@1", <<255>>)
+  end
+
   test "the package leaves compiler supervision to the caller" do
     assert Application.spec(:letterpress, :mod) == []
     refute Code.ensure_loaded?(Letterpress.Application)

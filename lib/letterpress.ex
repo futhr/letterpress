@@ -475,7 +475,11 @@ defmodule Letterpress do
   defp validate_options(_, _),
     do: {:error, [Diagnostic.simple("LP_OPTIONS_INVALID", "Options must be a keyword list")]}
 
-  defp validate_source(source) when is_binary(source), do: :ok
+  defp validate_source(source) when is_binary(source) do
+    if String.valid?(source),
+      do: :ok,
+      else: {:error, [Diagnostic.simple("LP_SOURCE_INVALID", "Source must be valid UTF-8")]}
+  end
 
   defp validate_source(_),
     do: {:error, [Diagnostic.simple("LP_SOURCE_INVALID", "Source must be a string")]}
