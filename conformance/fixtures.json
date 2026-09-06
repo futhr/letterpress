@@ -237,6 +237,22 @@
       },
       "backend_codes": ["LP_MJML_ELEMENT_FORBIDDEN"],
       "browser_codes": ["LP_MJML_ELEMENT_FORBIDDEN"]
+    },
+    {
+      "name": "undeclared filter argument",
+      "profile": "text/liquid@1",
+      "source": "{{ name | append: missing }}",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "name": {
+            "type": "string",
+            "context": "text"
+          }
+        }
+      },
+      "backend_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"],
+      "browser_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"]
     }
   ]
 }

@@ -1573,7 +1573,8 @@ function lookupDependencies(ast: AstNode): VariableDependency[] {
         ? node.lookups.map((item) => String((item as JsonObject).value ?? ""))
         : []
       const name = [root, ...lookups].filter(Boolean).join(".")
-      const output = ancestors.some((ancestor) => ancestor.type === "LiquidVariableOutput")
+      const parent = ancestors.at(-1)
+      const output = parent?.type === "LiquidVariable" && parent.expression === node
       const binding = localBinding(name, ancestors)
       if (root && !output && !liquidInternalVariable(name, ancestors) && !dependencies.has(name)) {
         dependencies.set(name, {
