@@ -100,6 +100,16 @@ defmodule Letterpress.ArtifactTest do
     end
   end
 
+  test "invalid UTF-8 metadata returns an artifact error", %{artifact: artifact} do
+    map =
+      artifact
+      |> Artifact.to_map()
+      |> Map.put("text", <<255>>)
+
+    assert {:error, :invalid_artifact_json} = Artifact.decode(map)
+    assert {:error, :invalid_artifact_json} = Artifact.encode(%{artifact | text: <<255>>})
+  end
+
   test "encoding rechecks the stored content hash", %{artifact: artifact} do
     assert {:error, :artifact_hash_mismatch} =
              artifact

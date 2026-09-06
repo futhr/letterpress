@@ -8,6 +8,10 @@ defmodule Letterpress.CanonicalJSONTest do
 
   doctest Letterpress.CanonicalJSON
 
+  test "non-bang encoding returns an error for malformed UTF-8" do
+    assert {:error, %Jason.EncodeError{}} = Letterpress.CanonicalJSON.encode(<<255>>)
+  end
+
   test "sorts object keys recursively and preserves array order" do
     left = %{"z" => 1, "a" => %{"b" => 2, "a" => [3, 1]}}
     right = %{"a" => %{"a" => [3, 1], "b" => 2}, "z" => 1}

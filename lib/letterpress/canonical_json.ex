@@ -28,7 +28,7 @@ defmodule Letterpress.CanonicalJSON do
   def encode(value) do
     {:ok, IO.iodata_to_binary(do_encode(value))}
   rescue
-    error in [ArgumentError, Protocol.UndefinedError] -> {:error, error}
+    error in [ArgumentError, Jason.EncodeError, Protocol.UndefinedError] -> {:error, error}
   end
 
   @doc """

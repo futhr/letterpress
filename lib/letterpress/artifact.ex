@@ -26,7 +26,7 @@ defmodule Letterpress.Artifact do
       true
   """
 
-  alias Letterpress.{CanonicalJSON, Profile, Schema}
+  alias Letterpress.{CanonicalJSON, JSON, Profile, Schema}
 
   @keys ~w(
     artifact_version profile source_sha256 schema_sha256 options_sha256 compiler
@@ -123,10 +123,12 @@ defmodule Letterpress.Artifact do
   def encode(%__MODULE__{} = artifact) do
     map = to_map(artifact)
 
-    with :ok <- validate_hash(map) do
+    with {:ok, _} <- decode(map) do
       CanonicalJSON.encode(map)
     end
   end
+
+  def encode(_), do: {:error, :invalid_artifact}
 
   @doc """
   Returns the JSON-native map covered by the artifact's content hash.
@@ -425,25 +427,11 @@ defmodule Letterpress.Artifact do
   defp valid_range?(_), do: false
 
   defp validate_json_native(value) do
-    if json_native?(value), do: :ok, else: {:error, :invalid_artifact_json}
-  end
-
-  defp json_native?(value) when is_map(value) and not is_struct(value) do
-    Enum.all?(value, fn {key, item} -> is_binary(key) and json_native?(item) end)
-  end
-
-  defp json_native?(value) when is_list(value), do: Enum.all?(value, &json_native?/1)
-  defp json_native?(value) when is_binary(value) or is_integer(value), do: true
-  defp json_native?(value) when is_boolean(value) or is_nil(value), do: true
-
-  defp json_native?(value) when is_float(value) do
-    case Jason.encode(value) do
-      {:ok, _} -> true
-      {:error, _} -> false
+    case JSON.normalize_object(value) do
+      {:ok, ^value} -> :ok
+      _ -> {:error, :invalid_artifact_json}
     end
   end
-
-  defp json_native?(_), do: false
 
   defp validate_hash(%{"content_sha256" => expected} = map) when is_binary(expected) do
     actual =
