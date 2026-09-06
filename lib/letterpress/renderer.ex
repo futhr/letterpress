@@ -192,13 +192,23 @@ defmodule Letterpress.Renderer do
     end)
   end
 
-  defp reduce_rendered_channel({:ok, output}, channel, acc, opts) do
+  defp reduce_rendered_channel({:ok, output}, :subject, acc, opts) do
+    case Filters.escape(output, "subject") do
+      {:ok, subject} -> store_rendered_channel(subject, :subject, acc, opts)
+      :error -> {:halt, {:error, {:liquid_errors, []}}}
+    end
+  end
+
+  defp reduce_rendered_channel({:ok, output}, channel, acc, opts),
+    do: store_rendered_channel(output, channel, acc, opts)
+
+  defp reduce_rendered_channel(error, _, _, _), do: {:halt, error}
+
+  defp store_rendered_channel(output, channel, acc, opts) do
     if within_output_limit?(output, opts),
       do: {:cont, {:ok, Map.put(acc, channel, output)}},
       else: {:halt, {:error, :render_output_too_large}}
   end
-
-  defp reduce_rendered_channel(error, _, _, _), do: {:halt, error}
 
   defp render_template(template, values) do
     Process.put(:letterpress_loop_iterations, 0)

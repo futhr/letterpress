@@ -30,6 +30,28 @@ defmodule Letterpress.RendererTest do
     assert rendered.subject == "Notice for Ada <Lovelace>"
   end
 
+  test "validates the complete subject after concatenating static and dynamic text", %{
+    email: artifact
+  } do
+    assert {:error, [%{code: "LP_RENDER_LIQUID"}]} =
+             Letterpress.render(artifact, email_values(), subject_max_bytes: 20)
+  end
+
+  test "rejects static subject line breaks atomically" do
+    for subject <- ["Notice\rInjected", "Notice\nInjected", String.duplicate("x", 999)] do
+      assert {:ok, artifact, _} =
+               Letterpress.compile(
+                 "email/mjml-liquid@1",
+                 email_source(),
+                 email_schema(),
+                 Keyword.put(email_compile_options(), :subject, subject)
+               )
+
+      assert {:error, [%{code: "LP_RENDER_LIQUID"}]} =
+               Letterpress.render(artifact, email_values())
+    end
+  end
+
   test "a false structural branch disappears", %{email: artifact} do
     values = Map.put(email_values(), "show_message", false)
     assert {:ok, rendered} = Letterpress.render(artifact, values)
