@@ -188,6 +188,7 @@ defmodule Letterpress do
            opts = Keyword.put(opts, :compile_values, compile_values),
            :ok <- Profile.validate(profile),
            {:ok, normalized_schema} <- Schema.normalize(schema),
+           :ok <- validate_compile_values(normalized_schema, compile_values),
            payload = compiler_payload(profile, source, normalized_schema, opts),
            {:ok, result} <- compiler_request(:compile, payload, opts) do
         finish_compile(profile, source, normalized_schema, opts, result)
@@ -328,6 +329,37 @@ defmodule Letterpress do
   """
   @spec encode_artifact(Artifact.t()) :: {:ok, binary()} | {:error, term()}
   def encode_artifact(value), do: Artifact.encode(value)
+
+  defp validate_compile_values(schema, values) do
+    Enum.reduce_while(schema["variables"], :ok, fn {name, definition}, :ok ->
+      value = compile_value_at(values, String.split(name, "."))
+
+      if definition["phase"] == "compile" and value != :missing and
+           not Schema.value_matches_definition?(value, definition) do
+        {:halt,
+         {:error,
+          [
+            Diagnostic.simple(
+              "LP_COMPILE_VALUE_INVALID",
+              "Compile value #{name} has the wrong type"
+            )
+          ]}}
+      else
+        {:cont, :ok}
+      end
+    end)
+  end
+
+  defp compile_value_at(value, []), do: value
+
+  defp compile_value_at(values, [key | rest]) when is_map(values) do
+    case Map.fetch(values, key) do
+      {:ok, value} -> compile_value_at(value, rest)
+      :error -> :missing
+    end
+  end
+
+  defp compile_value_at(_, _), do: :missing
 
   defp compiler_payload(profile, source, schema, opts) do
     %{

@@ -48,6 +48,43 @@ defmodule Letterpress.CompilerTest do
     assert Artifact.to_map(first) == Artifact.to_map(second)
   end
 
+  test "compile-phase values obey their declared types and URL contexts" do
+    for {type, context, source, value} <- [
+          {"integer", "text", "{{ value }}", "not an integer"},
+          {"string", "url", ~s(<a href="{{ value }}">Open</a>), "javascript:alert(1)"}
+        ] do
+      schema = %{
+        "version" => 1,
+        "variables" => %{
+          "value" => %{"type" => type, "phase" => "compile", "context" => context}
+        }
+      }
+
+      profile = if context == "url", do: "html/liquid@1", else: "text/liquid@1"
+
+      assert {:error, diagnostics} =
+               Letterpress.compile(profile, source, schema, compile_values: %{"value" => value})
+
+      assert Enum.any?(diagnostics, &(&1.code == "LP_COMPILE_VALUE_INVALID"))
+    end
+  end
+
+  test "compile-phase attributes cannot break out of single quotes" do
+    schema = %{
+      "version" => 1,
+      "variables" => %{
+        "value" => %{"type" => "string", "phase" => "compile", "context" => "html_attribute"}
+      }
+    }
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile("html/liquid@1", "<p title='{{ value }}'>Text</p>", schema,
+               compile_values: %{"value" => "' onclick='alert(1)"}
+             )
+
+    assert artifact.html == "<p title='&#39; onclick=&#39;alert(1)'>Text</p>"
+  end
+
   test "compiles text artifacts without MJML output" do
     assert {:ok, artifact, []} =
              Letterpress.compile("text/liquid@1", text_source(), text_schema())

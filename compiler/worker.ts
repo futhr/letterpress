@@ -1645,12 +1645,16 @@ function safeStaticUrlAttribute(attribute: AstNode): boolean {
     .map((item) => String(item.value ?? ""))
     .join("")
     .trim()
-  if (value === "" || /[\0-\x20\x7f]/.test(value)) return value === ""
-  if (value.startsWith("//") || value.startsWith("\\")) return false
+  return value === "" || safeUrl(value)
+}
+
+function safeUrl(value: string): boolean {
+  if (value === "" || /[\0-\x20\x7f\\]/.test(value)) return false
+  if (value.startsWith("//")) return false
   if (value.startsWith("/") || value.startsWith("#") || value.startsWith("?")) return true
   if (/^(?:https?|mailto|tel|cid):/i.test(value)) return true
   const leadingSegment = value.split(/[/?#]/, 1)[0] ?? ""
-  return !/[:&\\]/.test(leadingSegment)
+  return !/[:&]/.test(leadingSegment)
 }
 
 function contextFor(_node: AstNode, ancestors: AstNode[], edge: string, profile: string): string {
@@ -1743,13 +1747,19 @@ function validateCompileValue(
   )
     return { ok: false }
   if (context === "css" && /[;{}]|url\s*\(/i.test(text)) return { ok: false }
-  return { ok: true, value: context === "html_attribute" ? escapeAttribute(text) : text }
+  if (context === "url" && !safeUrl(text)) return { ok: false }
+  if (context === "subject" && /[\r\n]/.test(text)) return { ok: false }
+  return {
+    ok: true,
+    value: ["html_attribute", "url"].includes(context) ? escapeAttribute(text) : text,
+  }
 }
 
 function escapeAttribute(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
 }
