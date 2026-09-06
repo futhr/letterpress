@@ -183,11 +183,15 @@ export function completionsAt(
   if (/{{[^}]*$/.test(before) || /{%[^%]*$/.test(before)) {
     return variableCompletions(config.schema, variableRequirement(source, position, config.profile))
   }
+  if (config.profile === "email/mjml-liquid@1") {
+    const values = mjmlValueCompletions(before)
+    if (values) return values
+  }
   if (config.profile === "email/mjml-liquid@1" && /<mj-[^>]*\s+[A-Za-z-]*$/.test(before)) {
     return mjmlAttributeCompletions(before)
   }
   if (config.profile === "email/mjml-liquid@1" && /<\/?[A-Za-z-]*$/.test(before)) {
-    return mjmlElementCompletions(before)
+    return mjmlElementCompletions(source.slice(0, position))
   }
   if (config.profile === "html/liquid@1" && /<[^>]*\s+[A-Za-z-]*$/.test(before)) {
     return htmlAttributeCompletions(before)
@@ -235,7 +239,7 @@ function variableRequirement(
   profile: Profile,
 ): { phase?: VariablePhase; context?: VariableContext } {
   const before = source.slice(0, position)
-  if (/{%[^%]*$/.test(before)) return { context: "none" }
+  if (/{%[^%]*$/.test(before)) return {}
   if (profile === "text/liquid@1") return { context: "text" }
 
   const openStyle = before.lastIndexOf("<mj-style")
@@ -273,12 +277,24 @@ function variableRequirement(
 
 function mjmlElementCompletions(before: string): Completion[] {
   const parent = openElementStack(before).at(-1)
+  if (/<\/[A-Za-z-]*$/.test(before)) return parent ? [{ label: parent, type: "type" }] : []
   const nesting = emailProfile.nesting as Record<string, readonly string[]>
   const children = parent ? nesting[parent] : ["mjml"]
   const allowed: readonly string[] = children?.includes("*")
     ? emailProfile.elements
     : (children ?? emailProfile.elements)
   return [...allowed].sort().map((label) => ({ label, type: "type" }))
+}
+
+function mjmlValueCompletions(before: string): Completion[] | null {
+  const match = /<(mj-[A-Za-z-]+)\b[^>]*\s([A-Za-z-]+)\s*=\s*["'][^"']*$/.exec(before)
+  if (!match?.[1] || !match[2]) return null
+  const metadata = emailProfile.element_metadata as Record<
+    string,
+    { attributes: Record<string, string> }
+  >
+  const rule = metadata[match[1]]?.attributes[match[2]]
+  return rule ? (attributeValues(rule) ?? []).map(completion("constant")) : []
 }
 
 function mjmlAttributeCompletions(before: string): Completion[] {

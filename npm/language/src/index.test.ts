@@ -219,6 +219,18 @@ describe("Letterpress language contract", () => {
     )
   })
 
+  it("completes MJML values and closing tags with the full document context", () => {
+    expect(labels('<mj-text align="', "email/mjml-liquid@1")).toEqual(
+      expect.arrayContaining(["left", "center", "right"]),
+    )
+    expect(labels("<mjml><mj-body><mj-section></mj-", "email/mjml-liquid@1")).toEqual([
+      "mj-section",
+    ])
+    const source = `<mjml><mj-body><mj-section><mj-column>${" ".repeat(350)}<mj-`
+    expect(labels(source, "email/mjml-liquid@1")).toContain("mj-text")
+    expect(labels("{% if campaign.", "email/mjml-liquid@1")).toContain("campaign.csd_registered?")
+  })
+
   it("reports missing roots while accepting a valid declared document", () => {
     const invalid = createView("<mj-text>{{ user.name }}</mj-text>")
     expect(
