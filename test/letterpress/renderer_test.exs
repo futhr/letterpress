@@ -52,6 +52,18 @@ defmodule Letterpress.RendererTest do
     end
   end
 
+  test "URL scheme options cannot widen the contract", %{email: artifact} do
+    assert {:error, [%{code: "LP_OPTIONS_INVALID"}]} =
+             Letterpress.render(artifact, email_values(), allowed_url_schemes: ["javascript"])
+  end
+
+  test "rejects obfuscated delivery URLs before rendering", %{email: artifact} do
+    for url <- ["java\tscript:alert(1)", "/\\evil.test", "\\\\evil.test"] do
+      assert {:error, [%{code: "LP_RENDER_VALUE_INVALID"}]} =
+               Letterpress.render(artifact, Map.put(email_values(), "action_url", url))
+    end
+  end
+
   test "a false structural branch disappears", %{email: artifact} do
     values = Map.put(email_values(), "show_message", false)
     assert {:ok, rendered} = Letterpress.render(artifact, values)

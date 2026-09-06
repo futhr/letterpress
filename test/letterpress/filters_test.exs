@@ -14,6 +14,18 @@ defmodule Letterpress.Renderer.FiltersTest do
     assert {:ok, ~s({"safe":true})} = Filters.escape(%{"safe" => true}, "none")
   end
 
+  test "rejects browser-normalized URL schemes and authorities" do
+    for value <- [
+          "java\tscript:alert(1)",
+          " javascript:alert(1)",
+          "\\\\evil.test",
+          "/\\evil.test",
+          "https://safe.test/\u007f"
+        ] do
+      assert :error = Filters.escape(value, "url"), inspect(value)
+    end
+  end
+
   test "validates subjects, URLs, and internal filter calls" do
     assert {:ok, "Notice"} = Filters.escape("Notice", "subject")
     assert :error = Filters.escape("header\r\ninjection", "subject")

@@ -34,7 +34,10 @@ defmodule Letterpress.Renderer do
     max_output_bytes: [type: :pos_integer, default: 1_000_000],
     max_heap_words: [type: :pos_integer, default: 2_000_000],
     subject_max_bytes: [type: :pos_integer, default: 998],
-    allowed_url_schemes: [type: {:list, :string}, default: ~w(http https mailto tel cid)],
+    allowed_url_schemes: [
+      type: {:list, {:in, ~w(http https mailto tel cid)}},
+      default: ~w(http https mailto tel cid)
+    ],
     strict_values: [type: :boolean, default: true]
   ]
 

@@ -132,7 +132,6 @@ defmodule Letterpress.Schema do
 
   defp normalize_definition(name, definition)
        when is_map(definition) and not is_struct(definition) do
-    definition = definition
     unknown = Map.keys(definition) -- @allowed_fields
     types = Contract.get()["types"]
     phases = Contract.get()["phases"]
@@ -305,7 +304,6 @@ defmodule Letterpress.Schema do
 
   defp normalize_nested_definition(name, definition, depth)
        when is_map(definition) and not is_struct(definition) do
-    definition = definition
     unknown = Map.keys(definition) -- @nested_fields
     type = definition["type"]
 
@@ -371,14 +369,7 @@ defmodule Letterpress.Schema do
     is_binary(value) and match?({:ok, _, _}, DateTime.from_iso8601(value))
   end
 
-  def value_matches_type?(value, "url") when is_binary(value) do
-    uri = URI.parse(value)
-
-    value != "" and not String.contains?(value, ["\r", "\n", <<0>>]) and
-      (is_nil(uri.scheme) or uri.scheme in ~w(http https mailto tel cid))
-  end
-
-  def value_matches_type?(_, "url"), do: false
+  def value_matches_type?(value, "url"), do: Letterpress.URL.safe?(value)
 
   def value_matches_type?(value, "email") when is_binary(value),
     do: Regex.match?(~r/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/u, value)

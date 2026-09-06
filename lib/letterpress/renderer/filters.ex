@@ -74,27 +74,10 @@ defmodule Letterpress.Renderer.Filters do
 
   defp safe_url(value) do
     text = to_text(value)
-    uri = URI.parse(text)
 
-    cond do
-      String.contains?(text, ["\r", "\n", <<0>>]) ->
-        :error
-
-      String.starts_with?(text, "/") and not String.starts_with?(text, "//") ->
-        {:ok, html_escape(text, true)}
-
-      String.starts_with?(text, "#") ->
-        {:ok, html_escape(text, true)}
-
-      uri.scheme in allowed_url_schemes() ->
-        {:ok, html_escape(text, true)}
-
-      is_nil(uri.scheme) and is_nil(uri.host) ->
-        {:ok, html_escape(text, true)}
-
-      true ->
-        :error
-    end
+    if Letterpress.URL.safe?(text, allowed_url_schemes()),
+      do: {:ok, html_escape(text, true)},
+      else: :error
   end
 
   defp allowed_url_schemes do
