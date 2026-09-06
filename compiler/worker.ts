@@ -1023,10 +1023,7 @@ function validateEmbeddedHtml(
           { attribute: attributeNameValue, element: name },
         ),
       )
-    } else if (
-      policy.url_attributes.includes(attributeNameValue) &&
-      !safeStaticUrlAttribute(attribute)
-    ) {
+    } else if (policy.url_attributes.includes(attributeNameValue) && !safeUrlAttribute(attribute)) {
       diagnostics.push(
         diagnostic(
           source,
@@ -1103,7 +1100,9 @@ function validateAttributes(
     if (
       attributeNameValue.startsWith("on") ||
       attributeNameValue === "style" ||
-      !allowed.has(attributeNameValue)
+      !allowed.has(attributeNameValue) ||
+      (contract.profiles["email/mjml-liquid@1"].url_attributes.includes(attributeNameValue) &&
+        !safeUrlAttribute(attribute))
     ) {
       const range = (attribute.attributePosition as Position | undefined) ??
         attribute.position ??
@@ -1638,9 +1637,11 @@ function attributeName(node: AstNode | undefined): string {
   return elementName(node)
 }
 
-function safeStaticUrlAttribute(attribute: AstNode): boolean {
+function safeUrlAttribute(attribute: AstNode): boolean {
   const values = Array.isArray(attribute.value) ? (attribute.value as AstNode[]) : []
-  if (values.some((value) => value.type !== "TextNode")) return true
+  if (values.some((value) => value.type !== "TextNode")) {
+    return values.length === 1 && values[0]?.type === "LiquidVariableOutput"
+  }
   const value = values
     .map((item) => String(item.value ?? ""))
     .join("")

@@ -579,11 +579,13 @@ function validateAttributes(
         astProblem(attribute, `Attribute ${name} is not allowed on ${element}`, code),
       )
     } else if (
-      allowDataAttributes &&
-      contract.embedded_html.url_attributes.includes(
+      (contract.embedded_html.url_attributes.includes(
         name as (typeof contract.embedded_html.url_attributes)[number],
-      ) &&
-      !safeStaticUrlAttribute(attribute)
+      ) ||
+        emailProfile.url_attributes.includes(
+          name as (typeof emailProfile.url_attributes)[number],
+        )) &&
+      !safeUrlAttribute(attribute)
     ) {
       diagnostics.push(
         astProblem(attribute, `Attribute ${name} contains an unsafe static URL`, code),
@@ -592,14 +594,16 @@ function validateAttributes(
   }
 }
 
-function safeStaticUrlAttribute(attribute: AstNode): boolean {
+function safeUrlAttribute(attribute: AstNode): boolean {
   const values = Array.isArray(attribute.value) ? (attribute.value as AstNode[]) : []
-  if (values.some((value) => value.type !== "TextNode")) return true
+  if (values.some((value) => value.type !== "TextNode")) {
+    return values.length === 1 && values[0]?.type === "LiquidVariableOutput"
+  }
   const value = values
     .map((item) => String(item.value ?? ""))
     .join("")
     .trim()
-  if (value === "" || /[\0-\x20\x7f]/.test(value)) return value === ""
+  if (value === "" || /[\0-\x20\x7f\\]/.test(value)) return value === ""
   if (value.startsWith("//") || value.startsWith("\\")) return false
   if (value.startsWith("/") || value.startsWith("#") || value.startsWith("?")) return true
   if (/^(?:https?|mailto|tel|cid):/i.test(value)) return true

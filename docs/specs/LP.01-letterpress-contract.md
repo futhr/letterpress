@@ -78,7 +78,10 @@ existing identifier is forbidden.
 - Liquid outputs are allowed in text-bearing nodes and explicitly classified
   attributes. Structural Liquid control flow is allowed only where the
   compiler can preserve a valid MJML tree for every branch.
-- Dynamic URL-bearing attributes are validated at render time against the
+- A dynamic URL-bearing attribute must contain one complete Liquid output,
+  with no surrounding text or additional outputs. Construct URLs in host code
+  and pass the complete value. Static MJML URLs follow the HTML fragment URL
+  policy; dynamic URLs are validated before attribute escaping against the
   schema context and configured scheme allow-list.
 - Raw Liquid output is forbidden. `raw`, `include`, `render`, filesystem access,
   arbitrary filter registration, and user-defined tags are forbidden.
