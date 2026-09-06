@@ -89,6 +89,17 @@ defmodule Letterpress.ArtifactTest do
     end
   end
 
+  test "malformed variable entries return errors instead of raising", %{artifact: artifact} do
+    for variable <- [42, "wrong", nil, [], true] do
+      assert {:error, :invalid_artifact_variables} =
+               artifact
+               |> Artifact.to_map()
+               |> Map.put("variables", [variable])
+               |> rehash()
+               |> Artifact.decode()
+    end
+  end
+
   test "encoding rechecks the stored content hash", %{artifact: artifact} do
     assert {:error, :artifact_hash_mismatch} =
              artifact

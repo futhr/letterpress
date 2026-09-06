@@ -315,10 +315,9 @@ defmodule Letterpress.Artifact do
   end
 
   defp validate_variables(variables) when is_list(variables) do
-    names = Enum.map(variables, & &1["name"])
-
-    with true <- names == Enum.sort(names) and Enum.uniq(names) == names,
-         true <- Enum.all?(variables, &valid_variable?/1),
+    with true <- Enum.all?(variables, &valid_variable?/1),
+         names = Enum.map(variables, & &1["name"]),
+         true <- names == Enum.sort(names) and Enum.uniq(names) == names,
          {:ok, normalized} <- normalize_artifact_variables(variables),
          true <- normalized == variables do
       :ok
