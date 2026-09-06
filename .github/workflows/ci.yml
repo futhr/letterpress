@@ -9,6 +9,9 @@ on:
       CODECOV_TOKEN:
         required: false
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -67,10 +70,6 @@ jobs:
         if: matrix.check == 'floor'
       - run: mix check
         if: matrix.check == 'full'
-      - name: Audit production JavaScript dependencies
-        if: matrix.check == 'full'
-        run: pnpm audit --prod
-        continue-on-error: true
       - name: Upload Elixir coverage
         if: matrix.check == 'full'
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6

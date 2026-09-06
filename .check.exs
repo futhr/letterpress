@@ -13,6 +13,7 @@
     {:ex_unit, false},
     {:coveralls, command: "env MIX_ENV=test mix coveralls.lcov"},
     {:pnpm_install, command: "pnpm install --frozen-lockfile"},
+    {:npm_audit, command: "pnpm audit", deps: [:pnpm_install]},
     {:frontend_lint, command: "pnpm lint", deps: [:pnpm_install]},
     {:frontend_typecheck, command: "pnpm typecheck", deps: [:pnpm_install]},
     {:frontend_test, command: "pnpm test", deps: [:pnpm_install]},
