@@ -63,7 +63,8 @@ defmodule Letterpress.Renderer.ForTag do
     defp do_for(enumerable, tag, for_name, context, options) do
       length = Enum.count(enumerable)
       enumerable_key = tag.variable.identifier
-      parent_forloop = context.iteration_vars["forloop"]
+      parent_iteration_vars = context.iteration_vars
+      parent_forloop = parent_iteration_vars["forloop"]
 
       try do
         {result, context} =
@@ -93,11 +94,11 @@ defmodule Letterpress.Renderer.ForTag do
             end
           end)
 
-        context = cleanup_context(context, enumerable_key, parent_forloop)
+        context = %{context | iteration_vars: parent_iteration_vars}
         {Enum.reverse(result), context}
       catch
         {:result, result, caught_context} ->
-          context = cleanup_context(caught_context, enumerable_key, parent_forloop)
+          context = %{caught_context | iteration_vars: parent_iteration_vars}
           {Enum.reverse(result), context}
       end
     end
@@ -110,16 +111,6 @@ defmodule Letterpress.Renderer.ForTag do
         throw(:letterpress_loop_limit)
       else
         Process.put(:letterpress_loop_iterations, used + 1)
-      end
-    end
-
-    defp cleanup_context(context, enumerable_key, parent_forloop) do
-      context = %{context | iteration_vars: Map.delete(context.iteration_vars, enumerable_key)}
-
-      if enumerable_key != "forloop" and parent_forloop != nil do
-        %{context | iteration_vars: Map.put(context.iteration_vars, "forloop", parent_forloop)}
-      else
-        %{context | iteration_vars: Map.delete(context.iteration_vars, "forloop")}
       end
     end
 
@@ -169,9 +160,9 @@ defmodule Letterpress.Renderer.ForTag do
     defp apply_parameters(enumerable, tag, for_name, context, options) do
       with {:ok, start, context} <- offset(tag, for_name, context, options),
            {:ok, finish, context} <- limit(enumerable, tag, context, options) do
-        last_offset = start + finish
-        context = %{context | registers: Map.put(context.registers, for_name, last_offset + 1)}
-        enumerable = Enum.slice(enumerable, start..last_offset//1)
+        enumerable = Enum.slice(enumerable, start, finish)
+        next_offset = max(start, 0) + Enum.count(enumerable)
+        context = %{context | registers: Map.put(context.registers, for_name, next_offset)}
         {:ok, apply_reversed(enumerable, tag), context}
       end
     end
@@ -199,7 +190,7 @@ defmodule Letterpress.Renderer.ForTag do
         {:ok, value, context} = Argument.get(argument, context, [], options)
 
         case to_integer(value) do
-          {:ok, value} -> {:ok, value - 1, context}
+          {:ok, value} -> {:ok, max(value, 0), context}
           {:error, message} -> {:error, message, context}
         end
       else

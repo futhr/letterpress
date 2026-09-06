@@ -157,6 +157,21 @@ defmodule Letterpress.RendererTest do
              Letterpress.render(artifact, %{"items" => List.duplicate("x", 101)})
   end
 
+  test "zero loop limits take the else branch and nested bindings restore their parent" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    cases = [
+      {"{% for item in (1..3) limit: 0 %}x{% else %}empty{% endfor %}", "empty"},
+      {"{% for item in (1..2) %}{{ item }}{% for item in (3..4) %}{{ item }}{% endfor %}{{ item }}|{% endfor %}",
+       "1341|2342|"}
+    ]
+
+    for {source, expected} <- cases do
+      assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", source, schema)
+      assert {:ok, %{text: ^expected}} = Letterpress.render(artifact, %{})
+    end
+  end
+
   test "applies nested defaults before rendering" do
     schema = %{
       "version" => 1,
