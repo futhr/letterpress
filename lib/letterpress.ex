@@ -324,7 +324,7 @@ defmodule Letterpress do
   @doc """
   Encodes a verified artifact as canonical JSON.
 
-  The artifact's content hash is checked before encoding. The resulting bytes
+  The artifact's shape and content hash are checked before encoding. The bytes
   are suitable for persistence or transport across runtimes.
   """
   @spec encode_artifact(Artifact.t()) :: {:ok, binary()} | {:error, term()}

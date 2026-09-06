@@ -38,9 +38,7 @@ sink-specific validation and escaping.
 schema = %{
   "version" => 1,
   "variables" => %{
-    "html_name" => %{"type" => "string", "context" => "html_text"},
-    "subject_name" => %{"type" => "string", "context" => "subject"},
-    "text_name" => %{"type" => "string", "context" => "text"},
+    "name" => %{"type" => "string", "context" => "text"},
     "action_url" => %{"type" => "url", "context" => "url"}
   }
 }
@@ -50,7 +48,7 @@ source = """
   <mj-body>
     <mj-section>
       <mj-column>
-        <mj-text>Hello {{ html_name }}</mj-text>
+        <mj-text>Hello {{ name }}</mj-text>
         <mj-button href="{{ action_url }}">Open account</mj-button>
       </mj-column>
     </mj-section>
@@ -60,8 +58,8 @@ source = """
 
 {:ok, artifact, diagnostics} =
   Letterpress.compile("email/mjml-liquid@1", source, schema,
-    subject: "Welcome, {{ subject_name }}",
-    text: "Hello {{ text_name }}. Open {{ action_url }}"
+    subject: "Welcome, {{ name }}",
+    text: "Hello {{ name }}. Open {{ action_url }}"
   )
 ```
 
@@ -71,9 +69,7 @@ and render all channels atomically:
 ```elixir
 {:ok, result} =
   Letterpress.render(artifact, %{
-    "html_name" => "Taylor",
-    "subject_name" => "Taylor",
-    "text_name" => "Taylor",
+    "name" => "Taylor",
     "action_url" => "https://example.test/account"
   })
 

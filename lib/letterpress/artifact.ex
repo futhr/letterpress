@@ -4,8 +4,9 @@ defmodule Letterpress.Artifact do
 
   An artifact contains compiled subject, HTML, and text templates together with
   normalized variable definitions, compiler provenance, source maps, non-error
-  diagnostics, and hashes that bind those fields together. It contains no
-  recipient values or other resolved delivery data.
+  diagnostics, and hashes that bind those fields together. Delivery values are
+  supplied separately; compile-phase values and schema defaults are embedded.
+  Hashes detect corruption but do not authenticate an artifact producer.
 
   Persist or transport artifacts through `encode/1` and `decode/1`. Decoding
   rejects missing fields, extra fields, unsupported versions, malformed

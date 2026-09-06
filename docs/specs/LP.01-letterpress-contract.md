@@ -4,7 +4,7 @@ document_id: "LP.01"
 status: "Accepted for implementation"
 version: 1
 created: "2026-08-30"
-last_updated: "2026-09-01"
+last_updated: "2026-09-06"
 ---
 
 # LP.01 - Letterpress compiler, runtime, and editor contract
@@ -271,6 +271,11 @@ no insignificant whitespace, JSON native values, and SHA-256 lowercase hex.
 `content_sha256` covers every artifact field except itself. Timestamps, host
 paths, process IDs, random request IDs, and build-machine details are forbidden.
 
+The content hash detects corruption; it does not authenticate the producer.
+Consumers must accept artifacts from a trusted compiler/storage path or
+verify host-managed authentication before decoding. Decoding does not sanitize
+arbitrary HTML supplied in a checksum-valid object.
+
 Consumers persist the complete artifact. They must reject unknown artifact
 versions unless an explicit compatible decoder exists. Existing valid
 artifacts remain renderable when the compiler is unavailable.
@@ -497,10 +502,9 @@ must match. The release workflow builds artifacts once, verifies checksums and
 package exports, installs those exact artifacts into throwaway Elixir and
 Svelte consumers, and only then reaches a protected publish environment.
 
-Before the first tag, `CHANGELOG.md` contains no generated project history.
-GitOps creates the initial changelog from Conventional Commits in the release
-commit. This specification does not authorize a tag, GitHub repository,
-registry package, publish, or release.
+GitOps updates package versions and `CHANGELOG.md` from Conventional Commits
+in the release commit. Existing release history is retained. This specification
+does not authorize a tag, GitHub repository, registry package, publish, or release.
 
 ## 16. Adoption contract
 

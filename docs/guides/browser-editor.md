@@ -4,8 +4,11 @@ Install the framework-neutral language package, or the Svelte shell plus its
 peer dependencies:
 
 ```bash
-pnpm add @letterpress/language
-pnpm add @letterpress/svelte svelte @codemirror/autocomplete @codemirror/commands @codemirror/language @codemirror/lint @codemirror/search @codemirror/state @codemirror/view
+pnpm add @letterpress/language @letterpress/svelte svelte \
+  @codemirror/autocomplete @codemirror/commands @codemirror/lang-css \
+  @codemirror/lang-html @codemirror/lang-liquid @codemirror/language \
+  @codemirror/lint @codemirror/search @codemirror/state @codemirror/view \
+  @lezer/highlight
 ```
 
 `@letterpress/language` combines CodeMirror's HTML, Liquid, and CSS parsers.
@@ -30,8 +33,10 @@ local consumers on one runtime identity. Reserve raw `extensions` for advanced
 behavior and deduplicate CodeMirror peers when using them.
 
 Pass backend diagnostics together with the source hash and document version.
-The extension drops stale responses so an older validation request cannot
-annotate newer text.
+Update those freshness values on every source change, and clear diagnostics
+while a new validation request is pending. The extension compares responses
+with the values you supply; it does not calculate a source hash or increment
+your document version.
 
 ```svelte
 <script lang="ts">
@@ -53,6 +58,11 @@ annotate newer text.
   {sourceHash}
   {documentVersion}
   colorScheme="dark"
+  onChange={() => {
+    documentVersion += 1
+    sourceHash = ""
+    diagnostics = []
+  }}
 />
 ```
 

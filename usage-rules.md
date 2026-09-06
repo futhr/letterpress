@@ -26,5 +26,7 @@ the UI. Correlate asynchronous responses with `source_hash` and
 
 ## Do not persist resolved values
 
-Artifacts contain expressions and compiler provenance, not recipient data or
-secrets. Never place source, rendered output, or variable values in telemetry.
+Delivery values are supplied when rendering. Compile-phase values, schema
+defaults, and literal source are stored in artifacts, so keep secrets and
+recipient data out of those authoring inputs. Never place source, rendered
+output, or variable values in telemetry.

@@ -11,4 +11,12 @@ defense in depth rather than a sandbox. Consumers remain responsible for
 author authorization, tenant isolation, provider policy, and workload
 isolation.
 
-Supported releases receive security fixes.
+Artifact hashes provide content integrity, not authentication. Consumers must
+keep the compiler-to-storage path trusted or authenticate transported
+artifacts before decoding. Artifact decoding is not an HTML sanitizer for
+arbitrary caller-supplied documents.
+
+Compile-phase values become artifact content. Do not put secrets or recipient
+values in compile-phase variables, defaults, or template source.
+
+Security fixes target the current release line.

@@ -4,8 +4,8 @@
 
 Check `Letterpress.Compiler.status/1`, the Node executable, the caller-owned
 `Letterpress.Compiler.Supervisor`, and the per-call `:compiler_timeout`. A
-failed request never licenses a fallback compiler. Retry only when the host's
-authoring workflow says it is safe.
+failed request returns diagnostics. Retry transient worker failures according
+to your authoring workflow; correct deterministic source errors before retrying.
 
 ## MJML or Liquid diagnostics point at old text
 

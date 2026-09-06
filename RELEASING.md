@@ -5,7 +5,7 @@ One `vX.Y.Z` tag identifies the Hex package, `@letterpress/language`, and
 their hashes, installs those exact tarballs in throwaway Hex/npm consumers,
 and only then enters the protected `release` environment.
 
-Before the first release, configure protected `main` and `v*` rules, a
+Configure protected `main` and `v*` rules, a
 reviewer-protected `release` environment, a least-privilege npm automation
 token, and a least-privilege Hex API key. Store registry credentials only as
 secrets available to the protected release environment.
@@ -20,11 +20,11 @@ node scripts/release.mjs smoke --allow-untagged --artifact-dir dist/release
 node scripts/release.mjs publish --allow-untagged --artifact-dir dist/release --dry-run
 ```
 
-For the first release, remove the placeholder changelog and let GitOps create
-the initial history in the release commit. Update the Mix and both npm package
-versions together. Remove the pre-release notices from `README.md`,
-`docs/guides/quickstart.md`, and `SECURITY.md`. Dispatch a dry-run workflow from
-that commit before pushing the tag.
+Use `mix git_ops.release` to prepare the next release. The configuration in
+`config/config.exs` manages the Mix version, both npm versions, and
+`CHANGELOG.md` together. Review the resulting commit and changelog, run
+`mix check`, and dispatch a dry-run workflow before pushing the tag.
+Do not remove existing release history or move a published tag.
 
 Publication is resumable. Before the first registry write, the orchestrator
 checks every target. Existing versions are skipped only when their bytes match

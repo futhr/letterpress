@@ -66,6 +66,20 @@ policy; it should be reviewed like any other capacity or abuse-control change.
 ## Artifact rules
 
 Artifacts are canonical JSON with compiler provenance and a content hash.
-Decode rejects missing, extra, or forged fields and unsupported versions. Keep
-the artifact whole; extracting only generated HTML discards schema and
-provenance needed for safe rendering and future migrations.
+Decoding checks the shape, supported versions, schema, and content hash. The
+hash detects changed bytes; it does not authenticate who compiled them. Accept
+artifacts only from your trusted compiler and storage path. If artifacts cross
+an untrusted transport, authenticate them in the host before decoding.
+
+Keep the artifact whole. Extracting only generated HTML discards the schema
+and provenance needed for rendering and future migrations.
+
+Compile-phase values are embedded in the artifact. Use them for reviewed
+configuration such as a brand color, never for secrets or recipient data.
+Liquid filters and control flow use delivery-phase values; transform
+compile-phase values in host code before passing `:compile_values`.
+
+Pass complete URLs into dynamic URL attributes. For example, use
+`href="{{ action_url }}"` with a `url` context instead of joining a static
+prefix to Liquid fragments. URL validation covers the complete value.
+Subject limits cover the complete rendered subject, including literal text.

@@ -3,9 +3,10 @@
 A Svelte 5 editor component built on CodeMirror and `@letterpress/language`. It
 owns editor lifecycle, controlled source updates, profile/schema/diagnostic
 reconfiguration, keyboard save/format commands, read-only state, focus, and
-accessibility. Line numbers, folding, lint, matching, indentation, completion,
-search, wrapping, and placeholder behavior are configurable through props. It
-does not call a backend or make publication decisions.
+accessibility. Props configure line numbers, folding and lint gutters, wrapping,
+and placeholder text. Matching, indentation, completion, and search are included
+in the standard editor setup. It does not call a backend or make publication
+decisions.
 
 The bundled editor theme is a complete light/dark reference pair. Override its
 `--letterpress-editor-*` CSS properties or build a paired product theme with

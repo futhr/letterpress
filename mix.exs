@@ -135,6 +135,7 @@ defmodule Letterpress.MixProject do
         "docs/README.md": [title: "Documentation map"],
         "docs/research/R.01-platform-analysis.md": [title: "Platform analysis"],
         "docs/research/R.02-library-posture.md": [title: "Elixir library posture"],
+        "docs/research/R.03-dependency-hardening.md": [title: "Dependency hardening"],
         "conformance/README.md": [title: "Conformance corpus"],
         "docs/adr/ADR.001-backend-authority.md": [title: "Backend authority"],
         "docs/adr/ADR.002-host-boundary.md": [title: "Host boundary"],
