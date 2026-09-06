@@ -508,7 +508,11 @@ function validateElementNode(
     return
   }
 
-  if (emailProfile.forbidden_elements.includes(name as "mj-include")) {
+  if (
+    emailProfile.forbidden_elements.includes(
+      name as (typeof emailProfile.forbidden_elements)[number],
+    )
+  ) {
     diagnostics.push(
       astProblem(node, `MJML element ${name} is forbidden`, "LP_MJML_ELEMENT_FORBIDDEN"),
     )

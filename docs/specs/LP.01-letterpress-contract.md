@@ -71,7 +71,9 @@ existing identifier is forbidden.
 - One `mjml` root and one `mj-body` are required. `mj-head` is optional when the
   official compiler accepts the document.
 - `mj-include`, custom component registration, arbitrary plugins, and dynamic
-  file loading are forbidden.
+  file loading are forbidden. `mj-html-attributes`, `mj-selector`, and
+  `mj-html-attribute` are also forbidden: they can add unvalidated attributes
+  to the generated HTML after the source checks.
 - `mj-style` is CSS with compile-phase variables only. Delivery-phase Liquid is
   forbidden because moving control flow through generated CSS is not safe or
   source-map stable.

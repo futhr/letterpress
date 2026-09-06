@@ -226,6 +226,17 @@
       },
       "backend_codes": ["LP_MJML_ATTRIBUTE_FORBIDDEN"],
       "browser_codes": ["LP_MJML_ATTRIBUTE_FORBIDDEN"]
+    },
+    {
+      "name": "MJML cannot add event handlers after source validation",
+      "profile": "email/mjml-liquid@1",
+      "source": "<mjml><mj-head><mj-html-attributes><mj-selector path=\"div\"><mj-html-attribute name=\"onclick\">alert(1)</mj-html-attribute></mj-selector></mj-html-attributes></mj-head><mj-body><mj-section><mj-column><mj-text>Hello</mj-text></mj-column></mj-section></mj-body></mjml>",
+      "schema": {
+        "version": 1,
+        "variables": {}
+      },
+      "backend_codes": ["LP_MJML_ELEMENT_FORBIDDEN"],
+      "browser_codes": ["LP_MJML_ELEMENT_FORBIDDEN"]
     }
   ]
 }

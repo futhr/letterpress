@@ -25,7 +25,7 @@ const officialAttributes = sortObject(
   Object.assign({}, ...Object.values(componentMetadata).map((component) => component.attributes)),
 )
 
-const elementMetadata = sortObject({
+const allElementMetadata = {
   ...componentMetadata,
   mjml: {
     attributes: { dir: "enum(ltr,rtl,auto)", lang: "string", owa: "enum(mobile,desktop)" },
@@ -52,14 +52,25 @@ const elementMetadata = sortObject({
     defaults: {},
     ending_tag: true,
   },
-})
+}
+
+const enabledElements = new Set(source.profiles["email/mjml-liquid@1"].elements)
+const elementMetadata = sortObject(
+  Object.fromEntries(
+    Object.entries(allElementMetadata).filter(([name]) => enabledElements.has(name)),
+  ),
+)
 
 const nesting = Object.fromEntries(
   Object.entries(preset.dependencies)
     .sort(([left], [right]) => left.localeCompare(right))
+    .filter(([parent]) => enabledElements.has(parent))
     .map(([parent, children]) => [
       parent,
-      children.map((child) => (child instanceof RegExp ? "*" : child)).sort(),
+      children
+        .map((child) => (child instanceof RegExp ? "*" : child))
+        .filter((child) => child === "*" || enabledElements.has(child))
+        .sort(),
     ]),
 )
 

@@ -21,9 +21,6 @@
         "mj-preview",
         "mj-style",
         "mj-title",
-        "mj-html-attributes",
-        "mj-selector",
-        "mj-html-attribute",
         "mj-wrapper",
         "mj-section",
         "mj-group",
@@ -47,7 +44,12 @@
         "mj-carousel",
         "mj-carousel-image"
       ],
-      "forbidden_elements": ["mj-include"],
+      "forbidden_elements": [
+        "mj-include",
+        "mj-html-attributes",
+        "mj-selector",
+        "mj-html-attribute"
+      ],
       "url_attributes": ["href", "src", "background-url", "action"],
       "color_attributes": ["color", "background-color", "border-color"],
       "text_elements": [
@@ -221,8 +223,14 @@
       }
     ],
     "text": [
-      { "label": "conditional text", "template": "{% if ${1:condition} %}${2:Text}{% endif %}" },
-      { "label": "variable", "template": "{{ ${1:variable} }}" }
+      {
+        "label": "conditional text",
+        "template": "{% if ${1:condition} %}${2:Text}{% endif %}"
+      },
+      {
+        "label": "variable",
+        "template": "{{ ${1:variable} }}"
+      }
     ]
   },
   "diagnostic_codes": [

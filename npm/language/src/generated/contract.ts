@@ -22,9 +22,6 @@ export const contract = {
         "mj-preview",
         "mj-style",
         "mj-title",
-        "mj-html-attributes",
-        "mj-selector",
-        "mj-html-attribute",
         "mj-wrapper",
         "mj-section",
         "mj-group",
@@ -49,7 +46,10 @@ export const contract = {
         "mj-carousel-image"
       ],
       "forbidden_elements": [
-        "mj-include"
+        "mj-include",
+        "mj-html-attributes",
+        "mj-selector",
+        "mj-html-attribute"
       ],
       "url_attributes": [
         "href",
@@ -663,18 +663,6 @@ export const contract = {
           },
           "ending_tag": false
         },
-        "mj-html-attribute": {
-          "attributes": {
-            "name": "string"
-          },
-          "defaults": {},
-          "ending_tag": true
-        },
-        "mj-html-attributes": {
-          "attributes": {},
-          "defaults": {},
-          "ending_tag": false
-        },
         "mj-image": {
           "attributes": {
             "align": "enum(left,center,right)",
@@ -841,13 +829,6 @@ export const contract = {
             "text-padding": "4px 4px 4px 0"
           },
           "ending_tag": false
-        },
-        "mj-selector": {
-          "attributes": {
-            "path": "string"
-          },
-          "defaults": {},
-          "ending_tag": true
         },
         "mj-social": {
           "attributes": {
@@ -1140,7 +1121,6 @@ export const contract = {
           "mj-attributes",
           "mj-breakpoint",
           "mj-font",
-          "mj-html-attributes",
           "mj-preview",
           "mj-raw",
           "mj-style",
@@ -1159,10 +1139,6 @@ export const contract = {
           "mj-table",
           "mj-text"
         ],
-        "mj-html-attribute": [],
-        "mj-html-attributes": [
-          "mj-selector"
-        ],
         "mj-image": [],
         "mj-navbar": [
           "mj-navbar-link",
@@ -1173,9 +1149,6 @@ export const contract = {
           "mj-column",
           "mj-group",
           "mj-raw"
-        ],
-        "mj-selector": [
-          "mj-html-attribute"
         ],
         "mj-social": [
           "mj-raw",
