@@ -405,6 +405,22 @@ function validateLiquidNode(
 
   if (node.type === "VariableLookup") {
     const name = variableLookupName(node)
+    const parent = ancestors.at(-1)
+    const definition = schema.variables[name] ?? schema.variables[name.split(".")[0] ?? name]
+    if (
+      definition?.phase === "compile" &&
+      !localVariable(name, ancestors) &&
+      (parent?.type !== "LiquidVariable" ||
+        (Array.isArray(parent.filters) && parent.filters.length > 0))
+    ) {
+      diagnostics.push(
+        astProblem(
+          node,
+          "Compile-phase values support direct outputs only; use delivery values for Liquid expressions",
+          "LP_SCHEMA_PHASE_MISMATCH",
+        ),
+      )
+    }
     if (name && !localVariable(name, ancestors) && !declaredVariable(schema, name)) {
       diagnostics.push(
         astProblem(node, `Variable ${name} is not declared`, "LP_SCHEMA_UNDECLARED_VARIABLE"),

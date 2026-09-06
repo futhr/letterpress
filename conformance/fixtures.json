@@ -253,6 +253,69 @@
       },
       "backend_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"],
       "browser_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"]
+    },
+    {
+      "name": "compile-phase filters cannot be silently ignored",
+      "profile": "text/liquid@1",
+      "source": "{{ brand | upcase }}",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "brand": {
+            "type": "string",
+            "phase": "compile",
+            "context": "text"
+          },
+          "name": {
+            "type": "string",
+            "context": "text"
+          }
+        }
+      },
+      "backend_codes": ["LP_SCHEMA_PHASE_MISMATCH"],
+      "browser_codes": ["LP_SCHEMA_PHASE_MISMATCH"]
+    },
+    {
+      "name": "compile-phase conditions cannot reach delivery",
+      "profile": "text/liquid@1",
+      "source": "{% if brand %}Hello{% endif %}",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "brand": {
+            "type": "string",
+            "phase": "compile",
+            "context": "text"
+          },
+          "name": {
+            "type": "string",
+            "context": "text"
+          }
+        }
+      },
+      "backend_codes": ["LP_SCHEMA_PHASE_MISMATCH"],
+      "browser_codes": ["LP_SCHEMA_PHASE_MISMATCH"]
+    },
+    {
+      "name": "compile-phase filter arguments cannot reach delivery",
+      "profile": "text/liquid@1",
+      "source": "{{ name | append: brand }}",
+      "schema": {
+        "version": 1,
+        "variables": {
+          "brand": {
+            "type": "string",
+            "phase": "compile",
+            "context": "text"
+          },
+          "name": {
+            "type": "string",
+            "context": "text"
+          }
+        }
+      },
+      "backend_codes": ["LP_SCHEMA_PHASE_MISMATCH"],
+      "browser_codes": ["LP_SCHEMA_PHASE_MISMATCH"]
     }
   ]
 }

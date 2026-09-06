@@ -769,6 +769,23 @@ function analyze(
   for (const dependency of dependencies) if (!dependency.local) used.add(dependency.name)
   if (validateSchema) {
     const declared = flattenSchema(schema)
+    for (const dependency of dependencies) {
+      if (!dependency.local && schemaDefinition(schema, dependency.name)?.phase === "compile") {
+        diagnostics.push(
+          diagnostic(
+            source,
+            sourceHash,
+            documentVersion,
+            dependency.position,
+            "error",
+            "LP_SCHEMA_PHASE_MISMATCH",
+            "letterpress-schema",
+            "Liquid conditions, collections, and filter arguments require delivery-phase values",
+            { variable: dependency.name },
+          ),
+        )
+      }
+    }
     for (const name of [...used].sort()) {
       if (!declared.has(name) && !declared.has(name.split(".")[0] ?? name)) {
         diagnostics.push(
@@ -1179,6 +1196,21 @@ function validateLiquidUse(
   if (!definition) return
   const phase = String(definition.phase ?? "delivery")
   const declaredContext = String(definition.context ?? "none")
+  if (phase === "compile" && filters.length > 0) {
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        node.position ?? { start: 0, end: 0 },
+        "error",
+        "LP_SCHEMA_PHASE_MISMATCH",
+        "letterpress-schema",
+        "Compile-phase outputs do not support Liquid filters",
+        { variable: name },
+      ),
+    )
+  }
   if (["css", "color"].includes(context) && phase !== "compile") {
     diagnostics.push(
       diagnostic(

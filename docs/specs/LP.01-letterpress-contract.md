@@ -142,6 +142,12 @@ typed value can be reused across the outputs of an atomic email artifact:
 - compile-phase `color` may be emitted in a color attribute or a CSS value;
   every occurrence is validated against its actual sink before MJML runs.
 
+Compile-phase outputs substitute scalar values directly. They do not evaluate
+Liquid filters. Conditions, loop collections, and filter arguments require
+delivery-phase values; analysis rejects compile-phase references in those
+positions. Hosts apply compile-time transformations before passing
+`:compile_values`.
+
 Other context combinations remain incompatible. In particular, a general
 text declaration cannot enter a URL, color, or CSS sink, and URL declarations
 cannot enter arbitrary HTML attributes.
