@@ -118,6 +118,56 @@ defmodule Letterpress.TranslationTest do
     assert Enum.any?(diagnostics, &(&1.code == "LP_TRANSLATION_MISSING"))
   end
 
+  test "identical sibling copy has distinct translation identities" do
+    source =
+      "<mjml><mj-body><mj-section><mj-column><mj-text>Hello</mj-text><mj-text>Hello</mj-text></mj-column></mj-section></mj-body></mjml>"
+
+    schema = %{"version" => 1, "variables" => %{}}
+
+    assert {:ok, [first, second], []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema)
+
+    refute first["id"] == second["id"]
+
+    assert {:ok, translated, []} =
+             Letterpress.apply_translations("email/mjml-liquid@1", source, schema, %{
+               first["id"] => "Hej",
+               second["id"] => "Välkommen"
+             })
+
+    assert translated =~ "<mj-text>Hej</mj-text><mj-text>Välkommen</mj-text>"
+  end
+
+  test "translations reject NUL and multiline subjects before returning localized source" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    assert {:ok, [unit], []} =
+             Letterpress.extract_translation_units("text/liquid@1", "Hello", schema)
+
+    assert {:error, _} =
+             Letterpress.apply_translations("text/liquid@1", "Hello", schema, %{
+               unit["id"] => "Hello\0"
+             })
+
+    source = String.replace(email_source(), "{{ name }}", "friend")
+
+    assert {:ok, units, []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema,
+               subject: "Welcome"
+             )
+
+    translations =
+      Map.new(units, fn unit ->
+        {unit["id"],
+         if(unit["channel"] == "subject", do: "Welcome\r\nInjected", else: unit["source"])}
+      end)
+
+    assert {:error, _} =
+             Letterpress.localize("email/mjml-liquid@1", source, schema, translations,
+               subject: "Welcome"
+             )
+  end
+
   test "missing units and changed placeholders fail closed" do
     source = email_source()
 

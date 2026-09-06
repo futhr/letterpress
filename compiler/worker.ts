@@ -451,6 +451,26 @@ function applyChannelTranslations(
       )
       continue
     }
+    if (
+      translated.includes("\0") ||
+      (unit.context === "subject" && /[\r\n]/.test(translated)) ||
+      encoder.encode(translated).length > contract.limits.source_bytes
+    ) {
+      diagnostics.push(
+        diagnostic(
+          source,
+          sourceHash,
+          documentVersion,
+          range,
+          "error",
+          "LP_TRANSLATION_PLACEHOLDER",
+          "letterpress-translation",
+          "Translation is invalid for its output context or byte limit",
+          { unit_id: id },
+        ),
+      )
+      continue
+    }
     const originalSignature = liquidSignature(String(unit.source ?? ""))
     const translatedSignature = liquidSignature(translated)
     if (JSON.stringify(originalSignature) !== JSON.stringify(translatedSignature)) {
@@ -1447,7 +1467,13 @@ function collectTranslationUnit(
   if (start === undefined || end === undefined) return
   const text = source.slice(start, end)
   if (text.trim() === "") return
-  const path = [...ancestors.map(elementName).filter(Boolean), name].join("/")
+  const path = [...ancestors, node]
+    .map((entry, index, trail) => {
+      const parent = trail[index - 1]
+      const siblingIndex = parent ? childrenOf(parent).indexOf(entry) : 0
+      return `${elementName(entry) || entry.type}[${siblingIndex}]`
+    })
+    .join("/")
   units.push({
     id: sha256(`${path}\0${text}`).slice(0, 24),
     context: "html_text",
