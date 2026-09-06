@@ -101,6 +101,33 @@ describe("LetterpressEditor", () => {
     expect(editorView?.state.doc.toString()).toBe("Hello")
   })
 
+  it("discards formatting when the document changes before it completes", async () => {
+    const onFormat = vi.fn()
+    let view: EditorView | undefined
+    mounted.push(
+      mount(LetterpressEditor, {
+        target: document.body,
+        props: {
+          source: "Hello  ",
+          profile: "text/liquid@1",
+          schema,
+          onFormat,
+          onReady: (editor) => {
+            view = editor
+          },
+        },
+      }),
+    )
+    await tick()
+    view?.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", altKey: true, shiftKey: true, bubbles: true }),
+    )
+    view?.dispatch({ changes: { from: 0, to: 7, insert: "New draft" } })
+    await tick()
+    expect(view?.state.doc.toString()).toBe("New draft")
+    expect(onFormat).not.toHaveBeenCalled()
+  })
+
   it("supports autofocus and read-only presentation", async () => {
     const component = mount(LetterpressEditor, {
       target: document.body,

@@ -296,9 +296,13 @@ $effect(() => {
 async function formatEditor(): Promise<void> {
   if (!view || readOnly) return
   const editor = view
-  const current = editor.state.doc.toString()
-  const formatted = await formatLetterpressSource(profile, current)
-  if (view !== editor) return
+  const document = editor.state.doc
+  const currentProfile = profile
+  const current = document.toString()
+  const formatted = await formatLetterpressSource(currentProfile, current)
+  if (view !== editor || editor.state.doc !== document || profile !== currentProfile || readOnly) {
+    return
+  }
   if (formatted !== current) {
     editor.dispatch({ changes: { from: 0, to: current.length, insert: formatted } })
   }
