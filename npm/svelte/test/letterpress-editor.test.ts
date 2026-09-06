@@ -1,9 +1,15 @@
 import { EditorView } from "@codemirror/view"
+import { formatLetterpressSource } from "@letterpress/language"
 import { mount, tick, unmount } from "svelte"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import LetterpressEditor from "../src/letterpress-editor.svelte"
 import { createLetterpressEditorTheme } from "../src/theme"
 import ThemeHarness from "./theme-harness.svelte"
+
+vi.mock("@letterpress/language", async (importOriginal) => {
+  const language = await importOriginal<typeof import("@letterpress/language")>()
+  return { ...language, formatLetterpressSource: vi.fn(language.formatLetterpressSource) }
+})
 
 const mounted: ReturnType<typeof mount>[] = []
 const schema = { version: 1 as const, variables: { name: { type: "string" as const } } }
@@ -126,6 +132,60 @@ describe("LetterpressEditor", () => {
     await tick()
     expect(view?.state.doc.toString()).toBe("New draft")
     expect(onFormat).not.toHaveBeenCalled()
+  })
+
+  it("reports formatter failures without changing source", async () => {
+    vi.mocked(formatLetterpressSource).mockRejectedValueOnce(new Error("Formatter unavailable"))
+    const onError = vi.fn()
+    let view: EditorView | undefined
+    mounted.push(
+      mount(LetterpressEditor, {
+        target: document.body,
+        props: {
+          source: "<mjml",
+          profile: "email/mjml-liquid@1",
+          schema,
+          onError,
+          onReady: (editor) => {
+            view = editor
+          },
+        },
+      }),
+    )
+    await tick()
+    view?.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "f", altKey: true, shiftKey: true, bubbles: true }),
+    )
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(expect.any(Error), "format"))
+    expect(view?.state.doc.toString()).toBe("<mjml")
+  })
+
+  it("reports rejected save hooks", async () => {
+    const error = new Error("Save unavailable")
+    const onError = vi.fn()
+    let view: EditorView | undefined
+    mounted.push(
+      mount(LetterpressEditor, {
+        target: document.body,
+        props: {
+          source: "Hello",
+          profile: "text/liquid@1",
+          schema,
+          onError,
+          onSave: async () => {
+            throw error
+          },
+          onReady: (editor) => {
+            view = editor
+          },
+        },
+      }),
+    )
+    await tick()
+    view?.contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }),
+    )
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(error, "save"))
   })
 
   it("supports autofocus and read-only presentation", async () => {

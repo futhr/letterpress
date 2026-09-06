@@ -41,3 +41,11 @@ Hosts that edit a preprocessing language may set `clientDiagnostics={false}`
 and pass diagnostics from the backend after expansion. Grammar, highlighting,
 completion, formatting, and freshness-filtered server diagnostics remain
 enabled. Strict client diagnostics stay enabled by default.
+
+`Mod-s` invokes `onSave`; `Shift-Alt-f` formats the current document and invokes
+`onFormat`. If formatting finishes after the document or profile changes, the
+result is discarded. A read-only editor does not apply formatting.
+
+Use `onError(error, operation)` to handle formatter failures or rejected save
+and format hooks. `operation` is `"save"` or `"format"`. A formatter failure
+leaves the source unchanged and does not call `onFormat`.

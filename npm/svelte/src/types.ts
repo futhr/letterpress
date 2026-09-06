@@ -26,5 +26,6 @@ export interface LetterpressEditorProps {
   onChange?: (source: string) => void
   onSave?: (source: string) => void | Promise<void>
   onFormat?: (source: string) => void | Promise<void>
+  onError?: (error: unknown, operation: "save" | "format") => void
   onReady?: (view: EditorView) => void
 }

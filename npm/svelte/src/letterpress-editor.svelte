@@ -52,6 +52,7 @@ let {
   onSave,
   onFormat,
   onReady,
+  onError,
 }: LetterpressEditorProps = $props()
 
 let host: HTMLDivElement
@@ -195,7 +196,7 @@ onMount(() => {
               key: "Mod-s",
               preventDefault: true,
               run: () => {
-                void onSave?.(view?.state.doc.toString() ?? source)
+                void runCommand("save", () => onSave?.(view?.state.doc.toString() ?? source))
                 return true
               },
             },
@@ -203,7 +204,7 @@ onMount(() => {
               key: "Shift-Alt-f",
               preventDefault: true,
               run: () => {
-                void formatEditor()
+                void runCommand("format", formatEditor)
                 return true
               },
             },
@@ -292,6 +293,17 @@ $effect(() => {
   view.dispatch({ changes: { from: 0, to: current.length, insert: source } })
   applyingExternalSource = false
 })
+
+async function runCommand(
+  operation: "save" | "format",
+  action: () => void | Promise<void>,
+): Promise<void> {
+  try {
+    await action()
+  } catch (error) {
+    onError?.(error, operation)
+  }
+}
 
 async function formatEditor(): Promise<void> {
   if (!view || readOnly) return
