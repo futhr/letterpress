@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -8,6 +10,7 @@ import {
   isCanonicalRepositoryRemote,
   mergeSmokeDependencies,
   validateRelease,
+  verifyArtifacts,
 } from "./release.mjs"
 
 const packages = ["language", "svelte"]
@@ -33,7 +36,7 @@ function fixture(options = {}) {
 
   for (const name of packages) {
     const directory = `npm/${name}`
-    mkdirSync(directory === "npm/language" ? join(root, directory) : join(root, directory), {
+    mkdirSync(join(root, directory), {
       recursive: true,
     })
     writeFileSync(
@@ -123,4 +126,109 @@ test("keeps local tarballs ahead of package peer ranges in release smokes", () =
     "@letterpress/language": "file:/tmp/letterpress-language-0.1.0.tgz",
     svelte: "^5.0.0",
   })
+})
+
+function withArtifacts(callback) {
+  withFixture({}, (root) => {
+    const git = (args) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: "pipe" }).trim()
+    git(["init"])
+    git([
+      "-c",
+      "user.name=Release Test",
+      "-c",
+      "user.email=release@example.test",
+      "commit",
+      "--allow-empty",
+      "-m",
+      "fixture",
+    ])
+    const output = join(root, "artifacts")
+    mkdirSync(output)
+    const digest = (value, algorithm, encoding) =>
+      createHash(algorithm).update(value).digest(encoding)
+    const artifacts = [
+      { name: "letterpress", ecosystem: "hex", file: "letterpress-1.2.3.tar" },
+      ...packages.map((name) => ({
+        name: `@letterpress/${name}`,
+        ecosystem: "npm",
+        file: `letterpress-${name}-1.2.3.tgz`,
+      })),
+    ].map((artifact) => {
+      const bytes = `test package ${artifact.name}`
+      writeFileSync(join(output, artifact.file), bytes)
+      return {
+        ...artifact,
+        sha256: digest(bytes, "sha256", "hex"),
+        ...(artifact.ecosystem === "npm"
+          ? { integrity: `sha512-${digest(bytes, "sha512", "base64")}` }
+          : {}),
+      }
+    })
+    const manifest = {
+      schema_version: "letterpress/release/v1",
+      version: "1.2.3",
+      source_repository: "https://github.com/futhr/letterpress",
+      source_sha: git(["rev-parse", "HEAD"]),
+      source_dirty: false,
+      artifacts,
+    }
+    const writeManifest = () => {
+      const bytes = JSON.stringify(manifest)
+      writeFileSync(join(output, "release-manifest.json"), bytes)
+      writeFileSync(
+        join(output, "SHA256SUMS"),
+        `${[
+          ...artifacts.map(({ file, sha256 }) => `${sha256}  ${file}`),
+          `${digest(bytes, "sha256", "hex")}  release-manifest.json`,
+        ].join("\n")}\n`,
+      )
+    }
+    writeManifest()
+    const verify = () => verifyArtifacts(root, output, { allowUntagged: true, checkGit: false })
+    callback({ output, manifest, writeManifest, verify })
+  })
+}
+
+test("verifies exact artifact identities and bytes", () => {
+  withArtifacts(({ output, manifest, verify }) => {
+    assert.deepEqual(verify(), manifest)
+    writeFileSync(join(output, manifest.artifacts[0].file), "corrupted")
+    assert.throws(verify, /checksum mismatch/)
+  })
+})
+
+test("rejects altered artifact identities even when checksums match", () => {
+  for (const field of ["name", "ecosystem"]) {
+    withArtifacts(({ manifest, writeManifest, verify }) => {
+      manifest.artifacts[1][field] = "other"
+      writeManifest()
+      assert.throws(verify, /artifact identity mismatch/)
+    })
+  }
+  withArtifacts(({ manifest, writeManifest, verify }) => {
+    manifest.source_repository = "https://example.test/other"
+    writeManifest()
+    assert.throws(verify, /repository does not match/)
+  })
+  withArtifacts(({ manifest, writeManifest, verify }) => {
+    manifest.source_dirty = "false"
+    writeManifest()
+    assert.throws(verify, /invalid artifact manifest shape/)
+  })
+})
+
+test("requires exactly one checksum for every artifact and the manifest", () => {
+  for (const change of [
+    (lines) => lines.slice(0, -1),
+    (lines) => [...lines, lines[0]],
+    (lines) => [...lines, `${"0".repeat(64)}  ../outside`],
+  ]) {
+    withArtifacts(({ output, verify }) => {
+      const path = join(output, "SHA256SUMS")
+      const lines = readFileSync(path, "utf8").trim().split("\n")
+      writeFileSync(path, `${change(lines).join("\n")}\n`)
+      assert.throws(verify, /SHA256SUMS (is missing|entry)/)
+    })
+  }
 })

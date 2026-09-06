@@ -114,15 +114,29 @@ export function verifyArtifacts(root, output, options = {}) {
   if (manifest.source_sha !== gitCapture(root, ["rev-parse", "HEAD"])) {
     throw new Error("artifacts were built from another commit")
   }
+  if (manifest.source_repository !== REPOSITORY_URL) {
+    throw new Error("artifact manifest repository does not match source")
+  }
+  if (typeof manifest.source_dirty !== "boolean" || !Array.isArray(manifest.artifacts)) {
+    throw new Error("invalid artifact manifest shape")
+  }
   if (options.tag && manifest.source_dirty)
     throw new Error("tagged artifacts came from a dirty tree")
 
-  const expected = new Set([
-    `letterpress-${version}.tar`,
-    ...PACKAGES.map((pkg) => `letterpress-${pkg.slug}-${version}.tgz`),
+  const identities = new Map([
+    [`letterpress-${version}.tar`, { ecosystem: "hex", name: "letterpress" }],
+    ...PACKAGES.map((pkg) => [
+      `letterpress-${pkg.slug}-${version}.tgz`,
+      { ecosystem: "npm", name: pkg.name },
+    ]),
   ])
+  const expected = new Set(identities.keys())
   for (const artifact of manifest.artifacts) {
     if (!expected.delete(artifact.file)) throw new Error(`unexpected artifact ${artifact.file}`)
+    const identity = identities.get(artifact.file)
+    if (artifact.name !== identity.name || artifact.ecosystem !== identity.ecosystem) {
+      throw new Error(`artifact identity mismatch for ${artifact.file}`)
+    }
     const path = join(output, artifact.file)
     if (!existsSync(path)) throw new Error(`missing artifact ${artifact.file}`)
     if (hash(path, "sha256") !== artifact.sha256) {
@@ -134,12 +148,19 @@ export function verifyArtifacts(root, output, options = {}) {
   }
   if (expected.size > 0) throw new Error(`manifest is missing ${[...expected].join(", ")}`)
 
+  const checksummed = new Set([...identities.keys(), "release-manifest.json"])
   for (const line of readFileSync(join(output, "SHA256SUMS"), "utf8").trim().split("\n")) {
     const match = /^([a-f\d]{64}) {2}(.+)$/.exec(line)
     if (!match) throw new Error(`invalid SHA256SUMS line: ${line}`)
+    if (!checksummed.delete(match[2])) {
+      throw new Error(`unexpected or duplicate SHA256SUMS entry: ${match[2]}`)
+    }
     if (hash(join(output, match[2]), "sha256") !== match[1]) {
       throw new Error(`SHA256SUMS mismatch for ${match[2]}`)
     }
+  }
+  if (checksummed.size > 0) {
+    throw new Error(`SHA256SUMS is missing ${[...checksummed].join(", ")}`)
   }
   return manifest
 }
