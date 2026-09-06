@@ -333,7 +333,10 @@ fallback, never a fabricated line.
 ## 10. Translation units
 
 Letterpress extracts stable translation units from subject, text-bearing MJML
-nodes, and allow-listed human-facing attributes. IDs derive from profile,
+nodes, and the `alt`, `title`, and `aria-label` attributes declared by the
+generated contract. Attributes inside an extracted text unit remain part of its
+protected markup; they do not create overlapping units. Attribute translations
+escape literal quotes and preserve existing character references. IDs derive from profile,
 structural source path, context, and source text hash. Units include source
 range, context, source text, placeholders, and optional description.
 

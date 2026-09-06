@@ -489,7 +489,10 @@ function applyChannelTranslations(
       )
       continue
     }
-    replacements.push({ ...range, value: translated })
+    replacements.push({
+      ...range,
+      value: unit.context === "html_attribute" ? escapeTranslatedAttribute(translated) : translated,
+    })
   }
 
   return {
@@ -1491,6 +1494,9 @@ function collectTranslationUnit(
 ): void {
   const name = elementName(node)
   const profile = contract.profiles["email/mjml-liquid@1"]
+  const path = structuralPath(node, ancestors)
+  if (ancestors.some((ancestor) => profile.text_elements.includes(elementName(ancestor)))) return
+  collectAttributeTranslationUnits(node, path, source, sourceHash, units)
   if (!profile.text_elements.includes(name)) return
   const children = childrenOf(node)
   if (children.length === 0) return
@@ -1499,13 +1505,6 @@ function collectTranslationUnit(
   if (start === undefined || end === undefined) return
   const text = source.slice(start, end)
   if (text.trim() === "") return
-  const path = [...ancestors, node]
-    .map((entry, index, trail) => {
-      const parent = trail[index - 1]
-      const siblingIndex = parent ? childrenOf(parent).indexOf(entry) : 0
-      return `${elementName(entry) || entry.type}[${siblingIndex}]`
-    })
-    .join("/")
   units.push({
     id: sha256(`${path}\0${text}`).slice(0, 24),
     context: "html_text",
@@ -1513,6 +1512,67 @@ function collectTranslationUnit(
     range: { start, end },
     source_hash: sourceHash,
   })
+}
+
+function structuralPath(node: AstNode, ancestors: AstNode[]): string {
+  return [...ancestors, node]
+    .map((entry, index, trail) => {
+      const parent = trail[index - 1]
+      const siblingIndex = parent ? childrenOf(parent).indexOf(entry) : 0
+      return `${elementName(entry) || entry.type}[${siblingIndex}]`
+    })
+    .join("/")
+}
+
+function collectAttributeTranslationUnits(
+  node: AstNode,
+  path: string,
+  source: string,
+  sourceHash: string,
+  units: JsonObject[],
+): void {
+  const attributes = Array.isArray(node.attributes) ? (node.attributes as AstNode[]) : []
+  for (const attribute of attributes) {
+    const name = attributeName(attribute)
+    if (!contract.profiles["email/mjml-liquid@1"].translation_attributes.includes(name)) continue
+    const values = Array.isArray(attribute.value) ? (attribute.value as AstNode[]) : []
+    if (!values.some((value) => value.type === "TextNode" && String(value.value ?? "").trim()))
+      continue
+    const start = values[0]?.position?.start
+    const end = values.at(-1)?.position?.end
+    if (start === undefined || end === undefined) continue
+    const text = source.slice(start, end)
+    units.push({
+      id: sha256(`${path}\0@${name}\0${text}`).slice(0, 24),
+      context: "html_attribute",
+      source: text,
+      range: { start, end },
+      source_hash: sourceHash,
+    })
+  }
+}
+
+function escapeTranslatedAttribute(source: string): string {
+  const ast = toLiquidHtmlAST(source, {
+    mode: "strict",
+    allowUnclosedDocumentNode: false,
+  }) as unknown as AstNode
+  const replacements: { start: number; end: number; value: string }[] = []
+  walk(ast, [], (node) => {
+    if (node.type === "TextNode" && node.position) {
+      replacements.push({
+        ...node.position,
+        value: source
+          .slice(node.position.start, node.position.end)
+          .replace(/&(?!(?:#\d+|#x[\da-f]+|[a-z][a-z\d]+);)/gi, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;"),
+      })
+    }
+  })
+  return applyReplacements(source, replacements)
 }
 
 function collectTextTranslationUnit(

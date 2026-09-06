@@ -82,6 +82,11 @@ export const contract = {
         "css-class",
         "mj-class"
       ],
+      "translation_attributes": [
+        "alt",
+        "title",
+        "aria-label"
+      ],
       "element_metadata": {
         "mj-accordion": {
           "attributes": {

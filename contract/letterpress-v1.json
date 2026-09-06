@@ -62,7 +62,8 @@
         "mj-accordion-text"
       ],
       "structural_elements": ["mj-body", "mj-wrapper", "mj-section", "mj-group", "mj-column"],
-      "common_attributes": ["css-class", "mj-class"]
+      "common_attributes": ["css-class", "mj-class"],
+      "translation_attributes": ["alt", "title", "aria-label"]
     },
     "html/liquid@1": {
       "kind": "html",

@@ -168,6 +168,60 @@ defmodule Letterpress.TranslationTest do
              )
   end
 
+  test "extracts human-facing email attributes and escapes translated quotes" do
+    source =
+      ~s(<mjml><mj-body><mj-section><mj-column><mj-image src="https://example.test/logo.png" alt="Hello {{ name }}" /></mj-column></mj-section></mj-body></mjml>)
+
+    schema = %{
+      "version" => 1,
+      "variables" => %{"name" => %{"type" => "string", "context" => "text"}}
+    }
+
+    assert {:ok, [unit], []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema)
+
+    assert unit["context"] == "html_attribute"
+    assert unit["source"] == "Hello {{ name }}"
+
+    assert {:ok, localized, []} =
+             Letterpress.apply_translations("email/mjml-liquid@1", source, schema, %{
+               unit["id"] => ~s(Hej "{{ name }}")
+             })
+
+    assert localized =~ ~s(alt="Hej &quot;{{ name }}&quot;")
+    assert {:ok, artifact, []} = Letterpress.compile("email/mjml-liquid@1", localized, schema)
+    assert {:ok, %{html: html}} = Letterpress.render(artifact, %{"name" => "Ada"})
+    assert html =~ ~s(alt="Hej &quot;Ada&quot;")
+  end
+
+  test "attribute translations preserve entities and do not overlap text units" do
+    source =
+      ~s(<mjml><mj-body><mj-section><mj-column><mj-image src="https://example.test/logo.png" alt="Tea &amp; coffee" /><mj-text>Hello <span title="Greeting">friend</span></mj-text></mj-column></mj-section></mj-body></mjml>)
+
+    schema = %{"version" => 1, "variables" => %{}}
+
+    assert {:ok, [attribute, text], []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema)
+
+    assert attribute["source"] == "Tea &amp; coffee"
+    assert text["source"] == ~s(Hello <span title="Greeting">friend</span>)
+
+    assert {:ok, ^source, []} =
+             Letterpress.apply_translations("email/mjml-liquid@1", source, schema, %{
+               attribute["id"] => attribute["source"],
+               text["id"] => text["source"]
+             })
+
+    assert {:ok, localized, []} =
+             Letterpress.apply_translations("email/mjml-liquid@1", source, schema, %{
+               attribute["id"] => "Tea &amp; cake & coffee",
+               text["id"] => ~s(Hej <span title="Greeting">vän</span>)
+             })
+
+    assert localized =~ ~s(alt="Tea &amp; cake &amp; coffee")
+    assert localized =~ ~s(<mj-text>Hej <span title="Greeting">vän</span></mj-text>)
+  end
+
   test "missing units and changed placeholders fail closed" do
     source = email_source()
 
