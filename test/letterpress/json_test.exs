@@ -18,6 +18,12 @@ defmodule Letterpress.JSONTest do
            }
   end
 
+  test "rejects invalid UTF-8 in keys and nested values" do
+    for value <- [%{name: <<255>>}, %{<<255>> => "value"}, %{nested: [<<255>>]}] do
+      assert {:error, :invalid_json_object} = JSON.normalize_object(value)
+    end
+  end
+
   test "rejects structs, invalid keys and normalized-key collisions" do
     assert {:error, :invalid_json_object} = JSON.normalize_object(self())
     assert {:error, :invalid_json_object} = JSON.normalize_object(%{1 => "value"})

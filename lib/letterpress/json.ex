@@ -66,7 +66,10 @@ defmodule Letterpress.JSON do
     end
   end
 
-  defp normalize(value) when is_binary(value) or is_integer(value), do: {:ok, value}
+  defp normalize(value) when is_binary(value),
+    do: if(String.valid?(value), do: {:ok, value}, else: :error)
+
+  defp normalize(value) when is_integer(value), do: {:ok, value}
   defp normalize(value) when is_boolean(value) or is_nil(value), do: {:ok, value}
 
   defp normalize(value) when is_float(value) do
@@ -78,7 +81,7 @@ defmodule Letterpress.JSON do
 
   defp normalize(_), do: :error
 
-  defp normalize_key(key) when is_binary(key), do: {:ok, key}
+  defp normalize_key(key) when is_binary(key), do: normalize(key)
   defp normalize_key(key) when is_atom(key), do: {:ok, Atom.to_string(key)}
   defp normalize_key(_), do: :error
 end
