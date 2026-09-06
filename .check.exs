@@ -1,5 +1,6 @@
 [
   parallel: true,
+  retry: false,
   tools: [
     {:compiler, command: "mix compile --warnings-as-errors --force"},
     {:formatter, command: "mix format --check-formatted"},
