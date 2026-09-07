@@ -75,7 +75,7 @@ translated
 <!-- livebook:{"output":true} -->
 
 ```
-%{canonical_bytes: 1237, hash_preserved: true, text: "Hej Mira!"}
+%{canonical_bytes: 1236, hash_preserved: true, text: "Hej Mira!"}
 ```
 
 The byte count is specific to this artifact shape and Letterpress version. The
