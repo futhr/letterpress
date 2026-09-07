@@ -5,6 +5,57 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.1](https://github.com/futhr/letterpress/compare/v0.1.0...v0.1.1) (2026-09-07)
+
+
+
+
+### Bug Fixes:
+
+* release: verify package identities and complete checksums by Tobias Bohwalli
+
+* translation: extract and safely replace email attributes by Tobias Bohwalli
+
+* compiler: reject unevaluated compile-phase expressions by Tobias Bohwalli
+
+* check: always run the complete quality gate by Tobias Bohwalli
+
+* api: validate option lists and email channel encodings by Tobias Bohwalli
+
+* compiler: validate variables used by filter arguments by Tobias Bohwalli
+
+* translation: distinguish siblings and validate replacements by Tobias Bohwalli
+
+* language: complete MJML values and closing tags in context by Tobias Bohwalli
+
+* json: reject improper lists without raising by Tobias Bohwalli
+
+* renderer: preserve zero limits and nested loop bindings by Tobias Bohwalli
+
+* artifact: validate encoding inputs before canonical hashing by Tobias Bohwalli
+
+* editor: handle asynchronous command failures by Tobias Bohwalli
+
+* ci: enforce npm audits and produce frontend coverage by Tobias Bohwalli
+
+* api: reject invalid source encoding before worker requests by Tobias Bohwalli
+
+* compiler: forbid unchecked MJML output attributes by Tobias Bohwalli
+
+* compiler: require complete safe URL attributes by Tobias Bohwalli
+
+* compiler: validate and escape compile-phase values by Tobias Bohwalli
+
+* json: reject invalid UTF-8 at normalization boundary by Tobias Bohwalli
+
+* artifact: validate variable shapes before reading fields by Tobias Bohwalli
+
+* renderer: reject obfuscated URLs and widened schemes by Tobias Bohwalli
+
+* renderer: validate complete subject channels by Tobias Bohwalli
+
+* editor: discard formatting for changed documents by Tobias Bohwalli
+
 ## [v0.1.0](https://github.com/futhr/letterpress/compare/v0.1.0...v0.1.0) (2026-09-01)
 
 
