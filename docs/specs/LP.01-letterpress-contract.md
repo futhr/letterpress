@@ -132,6 +132,11 @@ Rendering rejects missing required delivery values, unknown values when strict
 mode is active, invalid types, unsafe URLs, CR/LF in subject values, and budget
 violations.
 
+Identifiers must match the complete string, including its final character.
+Omitted phase and context fields receive defaults; explicit invalid values do
+not. Objects accept `properties` and lists accept `items`; conflicting shape
+fields are rejected rather than discarded.
+
 Context declarations form a deliberately narrow compatibility lattice so one
 typed value can be reused across the outputs of an atomic email artifact:
 
@@ -147,6 +152,10 @@ Liquid filters. Conditions, loop collections, and filter arguments require
 delivery-phase values; analysis rejects compile-phase references in those
 positions. Hosts apply compile-time transformations before passing
 `:compile_values`.
+
+Numeric substitution must preserve the value supplied by the BEAM, including
+integers outside JavaScript's exact integer range. Schema defaults follow the
+same rule. Transport details must not change public JSON value types.
 
 Other context combinations remain incompatible. In particular, a general
 text declaration cannot enter a URL, color, or CSS sink, and URL declarations
@@ -226,6 +235,8 @@ Requirements:
   per-call options with conservative defaults;
 - a crashed, malformed, oversized, or late worker response fails the request,
   restarts only that worker, and never desynchronizes later requests;
+- request deadlines include time waiting for a worker; an expired queued
+  request is discarded before execution and a late response cannot succeed;
 - source and variable values are excluded from logs and telemetry;
 - the bundle does not use the network, shell, dynamic import, includes, or host
   file access;
@@ -271,6 +282,16 @@ no insignificant whitespace, JSON native values, and SHA-256 lowercase hex.
 `content_sha256` covers every artifact field except itself. Timestamps, host
 paths, process IDs, random request IDs, and build-machine details are forbidden.
 
+Duplicate JSON object keys and collisions between normalized atom/string keys
+are rejected at every depth. Non-bang canonical encoding returns checked
+errors for unsupported terms, including improper lists. Decoding verifies the
+schema hash against the complete embedded schema using type-strict native
+values: `1` and `1.0` have distinct canonical bytes and identities.
+
+Reserved filter names are syntax restrictions, not forbidden literal text.
+Compiled channel syntax must be usable by the delivery parser before an
+artifact is emitted. Sentinel restoration preserves replacement text literally.
+
 The content hash detects corruption; it does not authenticate the producer.
 Consumers must accept artifacts from a trusted compiler/storage path or
 verify host-managed authentication before decoding. Decoding does not sanitize
@@ -298,6 +319,16 @@ templates are not artifacts.
 - Rendering executes in a monitored isolated BEAM process. Timeout, memory,
   invalid input, missing data, and output overflow return diagnostics rather
   than partial output.
+
+Artifact validation, value normalization, default application, and channel
+rendering belong to that isolated operation. Input budgets apply to both caller
+values and effective values after nested defaults. Process heap limits are BEAM
+heap controls, not guarantees about total VM resident memory or input transfer
+cost. Timeout cleanup must not leave a late result in the caller's mailbox.
+
+Within a loop body, `forloop` metadata is a scoped Liquid value and does not
+require a schema declaration. Nested loops expose their parent's metadata and
+restore the enclosing binding when they finish.
 
 `Letterpress.render/3` accepts only a decoded Artifact, values, and runtime
 options. It returns all rendered channels atomically or an error; callers never
@@ -367,6 +398,10 @@ Applying translations:
 - never translates tags, Liquid code, CSS, URLs, variable names, or structure;
 - returns a new source document and diagnostics; it does not compile or publish;
 - treats missing units as incomplete, never as success.
+
+Each complete localized channel must also satisfy its source byte limit after
+all replacements and attribute escaping. Individually valid units cannot
+produce a successful result that the source-size gate would reject.
 
 Consumers own supported locale lists, provider calls, review state, and the
 decision to compile translated sources.
