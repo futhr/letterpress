@@ -190,6 +190,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
   const text = optionalString(payload.text)
   const schema = requireObject(payload.schema, "schema")
   const compileValues = optionalObject(payload.compile_values)
+  const compileNumbers = optionalObject(payload.compile_numbers)
   const documentVersion = optionalInteger(payload.document_version, 0)
   const analyses = analyzeChannels(profile, source, subject, text, schema, documentVersion)
   const analysis = analyses.source
@@ -208,6 +209,7 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     analysis,
     schema,
     compileValues,
+    compileNumbers,
     sourceHash,
     documentVersion,
   )
@@ -216,9 +218,17 @@ async function compilePayload(payload: JsonObject): Promise<JsonObject> {
     subjectAnalysis,
     schema,
     compileValues,
+    compileNumbers,
     documentVersion,
   )
-  const preparedText = prepareAuxiliary(text, textAnalysis, schema, compileValues, documentVersion)
+  const preparedText = prepareAuxiliary(
+    text,
+    textAnalysis,
+    schema,
+    compileValues,
+    compileNumbers,
+    documentVersion,
+  )
   const diagnostics = [
     ...initialDiagnostics,
     ...prepared.diagnostics,
@@ -1251,6 +1261,7 @@ function prepareSource(
   analysis: Analysis,
   schema: JsonObject,
   compileValues: JsonObject,
+  compileNumbers: JsonObject,
   sourceHash: string,
   documentVersion: number,
 ): {
@@ -1290,7 +1301,10 @@ function prepareSource(
         return
       }
       const resolved = value === undefined ? definition?.default : value
-      const validated = validateCompileValue(resolved, use.context)
+      const numberText = Object.hasOwn(compileNumbers, use.name)
+        ? compileNumbers[use.name]
+        : undefined
+      const validated = validateCompileValue(resolved, use.context, numberText)
       if (validated.ok) replacements.push({ ...use.position, value: validated.value })
       else
         diagnostics.push(
@@ -1422,7 +1436,7 @@ function restoreSentinels(
       } else {
         restored = restored.replaceAll(
           token,
-          `{{ ${sentinel.raw} | letterpress_escape: "${sentinel.sourceContext}" }}`,
+          () => `{{ ${sentinel.raw} | letterpress_escape: "${sentinel.sourceContext}" }}`,
         )
       }
     }
@@ -1443,6 +1457,7 @@ function prepareAuxiliary(
   analysis: Analysis | null,
   schema: JsonObject,
   compileValues: JsonObject,
+  compileNumbers: JsonObject,
   documentVersion: number,
 ): { output: string | null; diagnostics: Diagnostic[]; sourceMap: JsonObject } {
   if (source === null || analysis === null) return { output: null, diagnostics: [], sourceMap: {} }
@@ -1452,6 +1467,7 @@ function prepareAuxiliary(
     analysis,
     schema,
     compileValues,
+    compileNumbers,
     sourceHash,
     documentVersion,
   )
@@ -1848,7 +1864,13 @@ function compatibleContext(declared: string, actual: string): boolean {
 function valueAt(values: JsonObject, path: string): unknown {
   let current: unknown = values
   for (const segment of path.split(".")) {
-    if (!current || typeof current !== "object" || Array.isArray(current)) return undefined
+    if (
+      !current ||
+      typeof current !== "object" ||
+      Array.isArray(current) ||
+      !Object.hasOwn(current, segment)
+    )
+      return undefined
     current = (current as JsonObject)[segment]
   }
   return current
@@ -1857,9 +1879,11 @@ function valueAt(values: JsonObject, path: string): unknown {
 function validateCompileValue(
   value: unknown,
   context: string,
+  numberText?: unknown,
 ): { ok: true; value: string } | { ok: false } {
   if (!["string", "number", "boolean"].includes(typeof value)) return { ok: false }
-  const text = String(value)
+  const text =
+    typeof value === "number" && typeof numberText === "string" ? numberText : String(value)
   if (text.includes("\0") || /[{}<>]/.test(text)) return { ok: false }
   if (
     context === "color" &&

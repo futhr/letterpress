@@ -13,6 +13,40 @@ defmodule Letterpress.CompilerTest do
   doctest Letterpress.Compiler.Supervisor
   doctest Letterpress.Compiler.Worker
 
+  test "compile numbers retain exact values through the Node boundary" do
+    for {number, type} <- [
+          {9_007_199_254_740_993, "integer"},
+          {-9_007_199_254_740_993, "integer"},
+          {1.0, "number"}
+        ] do
+      definition = %{"type" => type, "phase" => "compile"}
+      schema = %{"version" => 1, "variables" => %{"n" => definition}}
+
+      assert {:ok, artifact, []} =
+               Letterpress.compile("text/liquid@1", "{{ n }}", schema,
+                 compile_values: %{n: number}
+               )
+
+      assert {:ok, %{text: text}} = Letterpress.render(artifact, %{})
+      assert text == to_string(number)
+
+      schema = put_in(schema, ["variables", "n", "default"], number)
+      assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", "{{ n }}", schema)
+      assert {:ok, %{text: ^text}} = Letterpress.render(artifact, %{})
+    end
+  end
+
+  test "sentinel restoration treats dollar replacement patterns literally" do
+    schema = %{"version" => 1, "variables" => %{}}
+
+    for suffix <- ["$&", "$$", "$`", "$'"] do
+      source = "before {{ \"x\" | append: \"#{suffix}\" }} after"
+      expected = "before x#{suffix} after"
+      assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", source, schema)
+      assert {:ok, %{text: ^expected}} = Letterpress.render(artifact, %{})
+    end
+  end
+
   test "compiles deterministic email artifacts through the supervised official worker" do
     assert {:ok, first, diagnostics} =
              Letterpress.compile(

@@ -369,9 +369,35 @@ defmodule Letterpress do
       "text" => Keyword.get(opts, :text),
       "schema" => schema,
       "compile_values" => Keyword.get(opts, :compile_values, %{}),
+      "compile_numbers" => compile_numbers(schema, Keyword.get(opts, :compile_values, %{})),
       "document_version" => Keyword.fetch!(opts, :document_version)
     }
   end
+
+  defp compile_numbers(schema, values) do
+    Enum.reduce(schema["variables"], %{}, fn {name, definition}, acc ->
+      compile_number(name, definition, values, acc)
+    end)
+  end
+
+  defp compile_number(name, %{"phase" => "compile"} = definition, values, acc) do
+    value = compile_value_at(values, String.split(name, "."))
+    resolved = if value == :missing, do: definition["default"], else: value
+    collect_compile_numbers(resolved, name, acc)
+  end
+
+  defp compile_number(_, _, _, acc), do: acc
+
+  defp collect_compile_numbers(value, name, acc) when is_number(value),
+    do: Map.put(acc, name, to_string(value))
+
+  defp collect_compile_numbers(value, name, acc) when is_map(value) do
+    Enum.reduce(value, acc, fn {key, item}, result ->
+      collect_compile_numbers(item, name <> "." <> key, result)
+    end)
+  end
+
+  defp collect_compile_numbers(_, _, acc), do: acc
 
   defp do_analyze(profile, source, schema, opts) do
     with :ok <- validate_source(source),
