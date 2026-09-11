@@ -28,7 +28,6 @@ defmodule Letterpress.Renderer do
   alias Letterpress.{Artifact, Contract, Diagnostic, JSON, Schema, Telemetry}
   alias Letterpress.Renderer.Filters
 
-  @allowed_tags ~w(if unless for case comment break continue)
   @options_schema [
     timeout: [type: :pos_integer, default: 5_000],
     max_output_bytes: [type: :pos_integer, default: 1_000_000],
@@ -221,7 +220,7 @@ defmodule Letterpress.Renderer do
 
     try do
       with :ok <- reject_legacy_syntax(template),
-           {:ok, parsed} <- Solid.parse(template, tags: allowed_tags()),
+           {:ok, parsed} <- Letterpress.Liquid.parse(template),
            {:ok, output, []} <-
              Solid.render(parsed, values,
                strict_variables: true,
@@ -246,12 +245,6 @@ defmodule Letterpress.Renderer do
     if Regex.match?(~r/\{\{\{|\{\{\s*[#\/^!]/, template),
       do: {:error, :legacy_syntax},
       else: :ok
-  end
-
-  defp allowed_tags do
-    Solid.Tag.default_tags()
-    |> Map.take(@allowed_tags)
-    |> Map.put("for", Letterpress.Renderer.ForTag)
   end
 
   defp validate_input_limits(values) do
@@ -438,6 +431,9 @@ defmodule Letterpress.Renderer do
     do: {"LP_RENDER_LIQUID", "Liquid rendering failed"}
 
   defp runtime_diagnostic_message({:liquid_parse, _}),
+    do: {"LP_ARTIFACT_LIQUID", "Artifact contains invalid Liquid"}
+
+  defp runtime_diagnostic_message(:invalid_artifact_liquid),
     do: {"LP_ARTIFACT_LIQUID", "Artifact contains invalid Liquid"}
 
   defp runtime_diagnostic_message(:legacy_syntax),

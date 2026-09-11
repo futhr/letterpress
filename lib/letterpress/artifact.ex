@@ -11,6 +11,8 @@ defmodule Letterpress.Artifact do
   Persist or transport artifacts through `encode/1` and `decode/1`. Decoding
   rejects missing fields, extra fields, unsupported versions, malformed
   provenance, invalid channel combinations, and content-hash mismatches.
+  Channel validation uses the delivery parser to check syntax and final
+  context filters; reserved names may still appear as literal text.
 
   ## Example
 
@@ -290,31 +292,9 @@ defmodule Letterpress.Artifact do
   end
 
   defp validate_template(template) do
-    outputs = Regex.scan(~r/{{\s*(.*?)\s*}}/s, template, capture: :all_but_first)
-
-    valid? =
-      Enum.all?(outputs, fn [expression] ->
-        case Regex.run(
-               ~r/\|\s*letterpress_escape\s*:\s*"([a-z_]+)"\s*\z/,
-               expression,
-               capture: :all_but_first
-             ) do
-          [context] -> context in @delivery_contexts
-          _ -> false
-        end
-      end)
-
-    reserved_count = length(Regex.scan(~r/letterpress_escape/, template))
-
-    cond do
-      not valid? ->
-        {:error, :invalid_artifact_context_filter}
-
-      reserved_count != length(outputs) ->
-        {:error, :invalid_artifact_context_filter}
-
-      true ->
-        :ok
+    case Letterpress.Liquid.parse(template) do
+      {:ok, _} -> :ok
+      error -> error
     end
   end
 

@@ -20,6 +20,43 @@ defmodule Letterpress.ArtifactTest do
     assert decoded == artifact
   end
 
+  test "reserved filter names are allowed in literal text and arguments" do
+    for source <- [
+          "letterpress_escape",
+          ~s({{ "letterpress_escape" }}),
+          ~s({{ "x" | append: "letterpress_escape" }})
+        ] do
+      assert {:ok, artifact, []} =
+               Letterpress.compile("text/liquid@1", source, %{version: 1, variables: %{}})
+
+      assert {:ok, %{text: text}} = Letterpress.render(artifact, %{})
+      assert text =~ "letterpress_escape"
+    end
+  end
+
+  test "compilation cannot return malformed delivery Liquid" do
+    schema = %{version: 1, variables: %{n: %{type: "string"}}}
+
+    assert {:error, [_ | _]} =
+             Letterpress.compile("text/liquid@1", ~s({{ n | append: "}}" }}), schema)
+  end
+
+  test "validates context filters inside branches as syntax", %{artifact: artifact} do
+    for expression <- [
+          ~s({{ name }}),
+          ~s({{ name | letterpress_escape: "unknown" }}),
+          ~s({{ name | letterpress_escape: "text" | letterpress_escape: "text" }}),
+          ~s({{ name | unknown | letterpress_escape: "text" }})
+        ] do
+      map =
+        Artifact.to_map(artifact)
+        |> Map.put("text", "{% if name %}#{expression}{% endif %}")
+        |> rehash()
+
+      assert {:error, :invalid_artifact_context_filter} = Artifact.decode(map)
+    end
+  end
+
   test "tampering and unknown versions fail closed", %{artifact: artifact} do
     map = Artifact.to_map(artifact)
     assert {:error, :artifact_hash_mismatch} = Artifact.decode(Map.put(map, "text", "changed"))
