@@ -440,6 +440,7 @@ function applyChannelTranslations(
   const sourceHash = sha256(source)
   const diagnostics: Diagnostic[] = []
   const replacements: { start: number; end: number; value: string }[] = []
+  let outputBytes = Buffer.byteLength(source, "utf8")
 
   for (const unit of analysis.translation_units) {
     const id = String(unit.id ?? "")
@@ -499,10 +500,28 @@ function applyChannelTranslations(
       )
       continue
     }
-    replacements.push({
-      ...range,
-      value: unit.context === "html_attribute" ? escapeTranslatedAttribute(translated) : translated,
-    })
+    const value =
+      unit.context === "html_attribute" ? escapeTranslatedAttribute(translated) : translated
+    outputBytes +=
+      Buffer.byteLength(value, "utf8") -
+      Buffer.byteLength(source.slice(range.start, range.end), "utf8")
+    replacements.push({ ...range, value })
+  }
+
+  if (outputBytes > contract.limits.source_bytes) {
+    diagnostics.push(
+      diagnostic(
+        source,
+        sourceHash,
+        documentVersion,
+        { start: 0, end: 0 },
+        "error",
+        "LP_SOURCE_TOO_LARGE",
+        "letterpress-translation",
+        "Localized source exceeds the profile byte limit",
+        {},
+      ),
+    )
   }
 
   return {

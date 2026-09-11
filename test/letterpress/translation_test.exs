@@ -3,6 +3,40 @@ defmodule Letterpress.TranslationTest do
 
   use ExUnit.Case, async: false
 
+  test "localized channels respect source budgets after all replacements" do
+    source =
+      "<mjml><mj-body><mj-section><mj-column><mj-text>Hello</mj-text><mj-text>Goodbye</mj-text></mj-column></mj-section></mj-body></mjml>"
+
+    schema = %{version: 1, variables: %{}}
+
+    assert {:ok, units, []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema)
+
+    translations = Map.new(units, &{&1["id"], String.duplicate("x", 260_000)})
+
+    assert {:error, diagnostics} =
+             Letterpress.localize("email/mjml-liquid@1", source, schema, translations)
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_SOURCE_TOO_LARGE"))
+  end
+
+  test "attribute escaping counts toward the localized source budget" do
+    source =
+      "<mjml><mj-body><mj-section><mj-column><mj-image src=\"https://example.test/image\" alt=\"Hello\" /></mj-column></mj-section></mj-body></mjml>"
+
+    schema = %{version: 1, variables: %{}}
+
+    assert {:ok, [unit], []} =
+             Letterpress.extract_translation_units("email/mjml-liquid@1", source, schema)
+
+    assert {:error, diagnostics} =
+             Letterpress.localize("email/mjml-liquid@1", source, schema, %{
+               unit["id"] => String.duplicate("\"", 90_000)
+             })
+
+    assert Enum.any?(diagnostics, &(&1.code == "LP_SOURCE_TOO_LARGE"))
+  end
+
   test "extracts stable units and applies placeholder-preserving translations" do
     source = email_source()
 
