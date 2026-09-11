@@ -11,6 +11,10 @@ compiler.
 The MJML + Liquid formatter is lazy-loaded as a browser-only bundle. Consumers
 do not need to install Prettier or the Shopify formatter plugin.
 
+The package supports its declared CodeMirror peer ranges. Newer Liquid peers
+also provide automatic percent-brace closing; older peers retain the language
+services without that optional enhancement.
+
 See the [repository README](https://github.com/futhr/letterpress) and
 [public contract](https://github.com/futhr/letterpress/blob/main/docs/specs/LP.01-letterpress-contract.md)
 for the package boundary and backend guarantees.

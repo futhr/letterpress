@@ -7,7 +7,8 @@ import {
 } from "@codemirror/autocomplete"
 import { cssLanguage } from "@codemirror/lang-css"
 import { html, type TagSpec } from "@codemirror/lang-html"
-import { closePercentBrace, liquid, liquidLanguage } from "@codemirror/lang-liquid"
+import * as liquidSupport from "@codemirror/lang-liquid"
+import { liquid, liquidLanguage } from "@codemirror/lang-liquid"
 import { LanguageSupport } from "@codemirror/language"
 import { type Diagnostic as CodeMirrorDiagnostic, linter } from "@codemirror/lint"
 import type { Extension } from "@codemirror/state"
@@ -74,7 +75,7 @@ export function letterpressLanguage(config: LanguageConfig): Extension {
       ? liquid({ base: emailBaseLanguage() })
       : config.profile === "html/liquid@1"
         ? liquid({ base: html({ autoCloseTags: true, matchClosingTags: true }) })
-        : new LanguageSupport(liquidLanguage, [closePercentBrace])
+        : new LanguageSupport(liquidLanguage, [percentBraceSupport()])
 
   return [
     language,
@@ -87,6 +88,10 @@ export function letterpressLanguage(config: LanguageConfig): Extension {
       { delay: config.lintDelay ?? 250 },
     ),
   ]
+}
+
+function percentBraceSupport(): Extension {
+  return (Reflect.get(liquidSupport, "closePercentBrace") as Extension | undefined) ?? []
 }
 
 export async function formatLetterpressSource(profile: Profile, source: string): Promise<string> {

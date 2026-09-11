@@ -468,6 +468,10 @@ Both packages declare broad peer ranges for CodeMirror/Svelte and ship ESM,
 types, source maps, export maps, provenance-ready package metadata, and no
 undeclared runtime imports.
 
+Optional editor enhancements introduced by newer compatible peers are detected
+at runtime. Their absence must not prevent importing the language package or
+using its core editing and validation APIs.
+
 ## 12. Public Elixir API
 
 The stable v1 entry points are:
