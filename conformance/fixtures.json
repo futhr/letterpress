@@ -316,6 +316,28 @@
       },
       "backend_codes": ["LP_SCHEMA_PHASE_MISMATCH"],
       "browser_codes": ["LP_SCHEMA_PHASE_MISMATCH"]
+    },
+    {
+      "name": "loop metadata is scoped without a schema declaration",
+      "profile": "text/liquid@1",
+      "source": "{% for item in (1..2) %}{{ forloop.index }}{% if forloop.first %}first{% endif %}{% endfor %}",
+      "schema": {
+        "version": 1,
+        "variables": {}
+      },
+      "backend_codes": [],
+      "browser_codes": []
+    },
+    {
+      "name": "loop metadata is not global",
+      "profile": "text/liquid@1",
+      "source": "{{ forloop.index }}",
+      "schema": {
+        "version": 1,
+        "variables": {}
+      },
+      "backend_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"],
+      "browser_codes": ["LP_SCHEMA_UNDECLARED_VARIABLE"]
     }
   ]
 }

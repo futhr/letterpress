@@ -718,6 +718,14 @@ function variableLookupName(node: AstNode): string {
 
 function localVariable(name: string, ancestors: AstNode[]): boolean {
   const root = name.split(".")[0]
+  if (root === "forloop") {
+    return ancestors.some(
+      (ancestor, index) =>
+        ancestor.type === "LiquidTag" &&
+        ancestor.name === "for" &&
+        childrenOf(ancestor).includes(ancestors[index + 1] as AstNode),
+    )
+  }
   if (
     root === "continue" &&
     ancestors.some((ancestor) => ancestor.type === "NamedArgument" && ancestor.name === "offset")

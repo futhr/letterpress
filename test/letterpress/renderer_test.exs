@@ -172,6 +172,16 @@ defmodule Letterpress.RendererTest do
     end
   end
 
+  test "loop metadata includes the parent and restores the outer loop" do
+    source =
+      "{% for item in (1..2) %}{{ forloop.index }}:{% for child in (1..2) %}{{ forloop.parentloop.index }}.{{ forloop.index }};{% endfor %}{{ forloop.index }}|{% endfor %}"
+
+    assert {:ok, artifact, []} =
+             Letterpress.compile("text/liquid@1", source, %{version: 1, variables: %{}})
+
+    assert {:ok, %{text: "1:1.1;1.2;1|2:2.1;2.2;2|"}} = Letterpress.render(artifact, %{})
+  end
+
   test "applies nested defaults before rendering" do
     schema = %{
       "version" => 1,

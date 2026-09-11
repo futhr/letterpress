@@ -1770,6 +1770,14 @@ function localVariable(name: string, ancestors: AstNode[]): boolean {
 }
 
 function liquidInternalVariable(name: string, ancestors: AstNode[]): boolean {
+  if (name.split(".")[0] === "forloop") {
+    return ancestors.some(
+      (ancestor, index) =>
+        ancestor.type === "LiquidTag" &&
+        ancestor.name === "for" &&
+        childrenOf(ancestor).includes(ancestors[index + 1] as AstNode),
+    )
+  }
   return (
     name.split(".")[0] === "continue" &&
     ancestors.some((ancestor) => ancestor.type === "NamedArgument" && ancestor.name === "offset")
