@@ -7,6 +7,19 @@ defmodule Letterpress.JSONTest do
 
   doctest Letterpress.JSON
 
+  test "rejects duplicate object keys inside arrays at every depth" do
+    for json <- [
+          ~s([{"name":"first","name":"second"}]),
+          ~s({"items":[null,{"name":"first","name":"second"}]}),
+          ~s({"items":[[{"nested":{"name":"first","name":"second"}}]]})
+        ] do
+      assert {:error, :invalid_artifact_json} = JSON.decode(json)
+    end
+
+    assert {:ok, [%{"name" => "first"}, %{"name" => "second"}]} =
+             JSON.decode(~s([{"name":"first"},{"name":"second"}]))
+  end
+
   test "normalizes nested atom keys and preserves JSON values" do
     assert {:ok, normalized} =
              JSON.normalize_object(%{user: %{name: "Ada"}, flags: [true, nil], score: 1.5})

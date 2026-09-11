@@ -234,6 +234,39 @@ defmodule Letterpress.RendererTest do
              Letterpress.render(map, %{}, max_heap_words: 10_000)
   end
 
+  test "artifact validation obeys the deadline without leaving a late result", %{text: artifact} do
+    map =
+      artifact
+      |> Artifact.to_map()
+      |> Map.put(
+        "lint",
+        List.duplicate(%{"severity" => "hint", "code" => "test", "message" => "test"}, 20_000)
+      )
+
+    hash =
+      map
+      |> Map.delete("content_sha256")
+      |> CanonicalJSON.hash()
+
+    candidate = Map.put(map, "content_sha256", hash)
+    values = %{"name" => "Ada", "code" => "123"}
+
+    assert {:ok, %{text: "Hello Ada, code 123"}} =
+             Letterpress.render(candidate, values, max_heap_words: 10_000_000)
+
+    marker = make_ref()
+    send(self(), {:unrelated, marker})
+
+    assert {:error, [%{code: "LP_RENDER_TIMEOUT", source_hash: source_hash}]} =
+             Letterpress.render(candidate, values, timeout: 1, max_heap_words: 10_000_000)
+
+    assert source_hash == artifact.source_sha256
+    assert_received {:unrelated, ^marker}
+    assert {:messages, []} = Process.info(self(), :messages)
+
+    assert {:ok, %{text: "Hello Ada, code 123"}} = Letterpress.render(artifact, values)
+  end
+
   test "rejects every render-input budget violation before Liquid execution", %{text: artifact} do
     too_deep = Enum.reduce(1..13, "value", fn index, acc -> %{"level_#{index}" => acc} end)
 

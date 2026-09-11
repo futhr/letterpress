@@ -75,6 +75,40 @@ defmodule Letterpress.CompilerTest do
              Letterpress.format("text/liquid@1", "next", compiler_pool: Letterpress.DeadlinePool)
   end
 
+  test "a late response fails pending and queued callers and cancels their timers" do
+    pending_reply = make_ref()
+    queued_reply = make_ref()
+    pending_timer = Process.send_after(self(), :unexpected_pending_timeout, 60_000)
+    queued_timer = Process.send_after(self(), :unexpected_queued_timeout, 60_000)
+
+    state = %{
+      port: :test_port,
+      pending: %{
+        id: "pending",
+        timer: pending_timer,
+        from: {self(), pending_reply},
+        deadline: System.monotonic_time(:millisecond) - 1
+      },
+      queue: :queue.from_list(["queued"]),
+      waiting: %{"queued" => %{timer: queued_timer, from: {self(), queued_reply}}},
+      max_frame_bytes: 1000
+    }
+
+    frame = Jason.encode!(%{id: "pending", ok: true, result: %{formatted: "late"}})
+
+    assert {:stop, :compiler_timeout, stopped} =
+             Worker.handle_info({:test_port, {:data, frame}}, state)
+
+    assert stopped.pending == nil
+    assert stopped.waiting == %{}
+    assert :queue.is_empty(stopped.queue)
+    assert_receive {^pending_reply, {:error, :compiler_timeout}}
+    assert_receive {^queued_reply, {:error, :compiler_timeout}}
+    assert Process.read_timer(pending_timer) == false
+    assert Process.read_timer(queued_timer) == false
+    refute_received {^pending_reply, {:ok, _}}
+  end
+
   test "compile numbers retain exact values through the Node boundary" do
     for {number, type} <- [
           {9_007_199_254_740_993, "integer"},
@@ -126,6 +160,37 @@ defmodule Letterpress.CompilerTest do
 
     assert {:ok, "first"} = Task.await(task)
     assert {:ok, "next"} = Letterpress.format("text/liquid@1", "next", opts)
+  end
+
+  test "compile numbers nested in objects retain their exact values" do
+    for {number, type} <- [
+          {9_007_199_254_740_993, "integer"},
+          {-9_007_199_254_740_993, "integer"},
+          {1.0, "number"}
+        ] do
+      schema = %{
+        version: 1,
+        variables: %{
+          totals: %{
+            type: "object",
+            phase: "compile",
+            properties: %{
+              invoice: %{type: "object", properties: %{amount: %{type: type}}}
+            }
+          }
+        }
+      }
+
+      assert {:ok, artifact, []} =
+               Letterpress.compile("text/liquid@1", "{{ totals.invoice.amount }}", schema,
+                 compile_values: %{totals: %{invoice: %{amount: number}}}
+               )
+
+      assert {:ok, json} = Letterpress.encode_artifact(artifact)
+      assert {:ok, decoded} = Letterpress.decode_artifact(json)
+      assert {:ok, %{text: text}} = Letterpress.render(decoded, %{})
+      assert text == to_string(number)
+    end
   end
 
   test "sentinel restoration treats dollar replacement patterns literally" do

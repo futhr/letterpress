@@ -159,7 +159,8 @@ defmodule Letterpress.ArtifactTest do
 
     for ambiguous <- [
           String.replace_suffix(json, "}", ",\"text\":\"discarded\"}"),
-          String.replace(json, "\"compiler\":{", "\"compiler\":{\"node\":\"0.0.0\",")
+          String.replace(json, "\"compiler\":{", "\"compiler\":{\"node\":\"0.0.0\","),
+          String.replace(json, "\"variables\":[{", "\"variables\":[{\"name\":\"discarded\",")
         ] do
       assert {:error, :invalid_artifact_json} = Artifact.decode(ambiguous)
     end
