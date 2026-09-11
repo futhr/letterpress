@@ -1874,8 +1874,10 @@ function flattenSchema(schema: JsonObject): Map<string, JsonObject> {
 }
 
 function schemaDefinition(schema: JsonObject, name: string): JsonObject | undefined {
-  const variables = flattenSchema(schema)
-  return variables.get(name) ?? variables.get(name.split(".")[0] ?? name)
+  const variables = optionalObject(schema.variables)
+  const root = name.split(".")[0] ?? name
+  const key = Object.hasOwn(variables, name) ? name : root
+  return Object.hasOwn(variables, key) ? (variables[key] as JsonObject) : undefined
 }
 
 function compatibleContext(declared: string, actual: string): boolean {
