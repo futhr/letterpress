@@ -217,6 +217,7 @@ defmodule Letterpress.RendererTest do
       |> Artifact.to_map()
       |> Map.put("text", "{% assign secret = 'x' %}")
       |> Map.put("variables", [])
+      |> Map.put("schema_sha256", CanonicalJSON.hash(%{"version" => 1, "variables" => %{}}))
 
     forged =
       Map.put(

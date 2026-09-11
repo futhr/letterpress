@@ -117,6 +117,39 @@ defmodule Letterpress.ArtifactTest do
              |> Artifact.encode()
   end
 
+  test "rejects duplicate JSON keys before projecting objects", %{artifact: artifact} do
+    {:ok, json} = Artifact.encode(artifact)
+
+    for ambiguous <- [
+          String.replace_suffix(json, "}", ",\"text\":\"discarded\"}"),
+          String.replace(json, "\"compiler\":{", "\"compiler\":{\"node\":\"0.0.0\",")
+        ] do
+      assert {:error, :invalid_artifact_json} = Artifact.decode(ambiguous)
+    end
+  end
+
+  test "binds the schema hash to every embedded native value", %{artifact: artifact} do
+    assert {:error, :artifact_schema_hash_mismatch} =
+             artifact
+             |> Artifact.to_map()
+             |> Map.put("schema_sha256", String.duplicate("0", 64))
+             |> rehash()
+             |> Artifact.decode()
+
+    schema = %{version: 1, variables: %{n: %{type: "number", default: 1.0}}}
+    assert {:ok, number_artifact, _} = Letterpress.compile("text/liquid@1", "{{ n }}", schema)
+    assert {:ok, json} = Artifact.encode(number_artifact)
+    assert {:ok, decoded} = Artifact.decode(json)
+    assert hd(decoded.variables)["default"] === 1.0
+
+    assert {:error, :artifact_schema_hash_mismatch} =
+             number_artifact
+             |> Artifact.to_map()
+             |> update_in(["variables"], fn [variable] -> [Map.put(variable, "default", 1)] end)
+             |> rehash()
+             |> Artifact.decode()
+  end
+
   defp rehash(map) do
     content_hash =
       map

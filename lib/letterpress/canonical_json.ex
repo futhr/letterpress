@@ -3,6 +3,7 @@ defmodule Letterpress.CanonicalJSON do
   Encodes JSON-compatible data into Letterpress's deterministic byte form.
 
   Object keys are converted to strings and sorted lexically at every depth.
+  Keys that collide after conversion are rejected.
   Arrays keep their order, and no insignificant whitespace is emitted.
   Letterpress normalizes public input before it reaches this module, so callers
   should pass only maps, lists, strings, finite numbers, booleans, and `nil`.
@@ -63,7 +64,11 @@ defmodule Letterpress.CanonicalJSON do
   defp do_encode(value) when is_map(value) and not is_struct(value) do
     entries =
       value
-      |> Enum.map(fn {key, item} -> {to_string(key), item} end)
+      |> Enum.reduce(%{}, fn {key, item}, acc ->
+        key = to_string(key)
+        if Map.has_key?(acc, key), do: raise(ArgumentError, "duplicate canonical JSON key")
+        Map.put(acc, key, item)
+      end)
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.map(fn {key, item} -> [Jason.encode!(key), ?:, do_encode(item)] end)
 
@@ -71,7 +76,7 @@ defmodule Letterpress.CanonicalJSON do
   end
 
   defp do_encode(value) when is_list(value) do
-    [?[, Enum.intersperse(Enum.map(value, &do_encode/1), ?,), ?]]
+    [?[, encode_list(value), ?]]
   end
 
   defp do_encode(value)
@@ -82,4 +87,9 @@ defmodule Letterpress.CanonicalJSON do
   defp do_encode(value) do
     raise ArgumentError, "value is not canonical JSON: #{inspect(value)}"
   end
+
+  defp encode_list([]), do: []
+  defp encode_list([value]), do: do_encode(value)
+  defp encode_list([value | rest]), do: [do_encode(value), ?,, encode_list(rest)]
+  defp encode_list(_), do: raise(ArgumentError, "improper JSON array")
 end

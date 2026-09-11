@@ -102,7 +102,7 @@ defmodule Letterpress.Artifact do
   """
   @spec decode(binary() | map()) :: {:ok, t()} | {:error, term()}
   def decode(json) when is_binary(json) do
-    with {:ok, map} <- Jason.decode(json), do: decode(map)
+    with {:ok, map} <- JSON.decode(json), do: decode(map)
   end
 
   def decode(map) when is_map(map) and not is_struct(map) do
@@ -204,6 +204,7 @@ defmodule Letterpress.Artifact do
          :ok <- validate_compiler(map["compiler"]),
          :ok <- validate_channels(map),
          :ok <- validate_variables(map["variables"]),
+         :ok <- validate_schema_hash(map),
          :ok <- validate_translation_units(map["translation_units"], map["source_sha256"]),
          :ok <- validate_source_map(map["source_map"]),
          :ok <- validate_lint(map["lint"]) do
@@ -322,7 +323,7 @@ defmodule Letterpress.Artifact do
          names = Enum.map(variables, & &1["name"]),
          true <- names == Enum.sort(names) and Enum.uniq(names) == names,
          {:ok, normalized} <- normalize_artifact_variables(variables),
-         true <- normalized == variables do
+         true <- normalized === variables do
       :ok
     else
       _ -> {:error, :invalid_artifact_variables}
@@ -330,6 +331,15 @@ defmodule Letterpress.Artifact do
   end
 
   defp validate_variables(_), do: {:error, :invalid_artifact_variables}
+
+  defp validate_schema_hash(map) do
+    variables = Map.new(map["variables"], &{&1["name"], Map.delete(&1, "name")})
+    hash = Schema.hash(%{"version" => 1, "variables" => variables})
+
+    if hash == map["schema_sha256"],
+      do: :ok,
+      else: {:error, :artifact_schema_hash_mismatch}
+  end
 
   defp valid_variable?(variable) when is_map(variable) do
     is_binary(variable["name"]) and is_binary(variable["type"]) and

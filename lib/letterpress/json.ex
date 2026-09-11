@@ -39,6 +39,42 @@ defmodule Letterpress.JSON do
 
   def normalize_object(_), do: {:error, :invalid_json_object}
 
+  @doc false
+  @spec decode(binary()) :: {:ok, term()} | {:error, term()}
+  def decode(json) do
+    with {:ok, value} <- Jason.decode(json, objects: :ordered_objects) do
+      decode_value(value)
+    end
+  end
+
+  defp decode_value(%Jason.OrderedObject{values: entries}) do
+    Enum.reduce_while(entries, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      with false <- Map.has_key?(acc, key),
+           {:ok, decoded} <- decode_value(value) do
+        {:cont, {:ok, Map.put(acc, key, decoded)}}
+      else
+        _ -> {:halt, {:error, :invalid_artifact_json}}
+      end
+    end)
+  end
+
+  defp decode_value(values) when is_list(values) do
+    result =
+      Enum.reduce_while(values, {:ok, []}, fn value, {:ok, acc} ->
+        case decode_value(value) do
+          {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
+          error -> {:halt, error}
+        end
+      end)
+
+    case result do
+      {:ok, values} -> {:ok, Enum.reverse(values)}
+      error -> error
+    end
+  end
+
+  defp decode_value(value), do: {:ok, value}
+
   defp normalize(value) when is_map(value) and not is_struct(value) do
     Enum.reduce_while(value, {:ok, %{}}, fn {key, item}, {:ok, acc} ->
       with {:ok, key} <- normalize_key(key),

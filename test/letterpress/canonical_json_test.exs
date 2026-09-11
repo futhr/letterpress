@@ -33,4 +33,15 @@ defmodule Letterpress.CanonicalJSONTest do
   test "rejects non-JSON terms" do
     assert {:error, %ArgumentError{}} = CanonicalJSON.encode({:tuple, :value})
   end
+
+  test "rejects ambiguous keys at every depth and improper list tails" do
+    for value <- [%{:a => 1, "a" => 2}, [%{1 => true, "1" => false}], [1 | 2]] do
+      assert {:error, %ArgumentError{}} = CanonicalJSON.encode(value)
+    end
+  end
+
+  test "preserves native scalar types and distinguishes numeric identities" do
+    assert CanonicalJSON.encode!([true, false, nil, 1, 1.0]) == "[true,false,null,1,1.0]"
+    refute CanonicalJSON.hash(%{"n" => 1}) == CanonicalJSON.hash(%{"n" => 1.0})
+  end
 end
