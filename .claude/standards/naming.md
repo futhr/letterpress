@@ -26,3 +26,21 @@ Avoid these substitutions:
 - Do not use "template rendering" when the distinction between compile phase
   and delivery phase matters.
 - Do not name private consumers, tenant models, providers, or host routes.
+
+## JavaScript and TypeScript functions
+
+Prefer `const`-bound arrow functions and concise expression bodies for a single
+returned expression. Keep explicit types on module boundaries. Use ordinary
+functions when their semantics are needed, such as generators or dynamic
+`this`; initialize arrow functions before invoking them.
+
+Compiler passes consume readonly inputs and return diagnostics, translation
+units, or replacement plans. A helper must not append to a caller-owned
+collection. Local arrays, maps, and loop cursors may be mutable while building
+a result; avoid repeated accumulator copies. Readonly types constrain writes
+through typed references and do not imply runtime deep freezing.
+
+Biome checks arrow function expressions, concise arrow returns, constant
+bindings, optional chaining, object spread, parameter reassignment, and
+accumulating spread. Its built-in arrow rule does not cover function
+declarations; review those against the preference above.

@@ -6,5 +6,5 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["worker.ts", "../contract/letterpress-v1.json"]
+  "include": ["**/*.ts", "../contract/letterpress-v1.json"]
 }

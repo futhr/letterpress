@@ -6,20 +6,20 @@ type Position = { start: number; end: number }
 type AstNode = JsonObject & { type?: string; name?: unknown; position?: Position }
 
 export interface SentinelIssue {
-  token: string
-  count: number
-  contexts: string[]
+  readonly token: string
+  readonly count: number
+  readonly contexts: readonly string[]
 }
 
 export interface SentinelOccurrence {
-  start: number
-  end: number
-  context: string
+  readonly start: number
+  readonly end: number
+  readonly context: string
 }
 
 export interface SentinelInspection {
-  issues: SentinelIssue[]
-  occurrences: Map<string, SentinelOccurrence[]>
+  readonly issues: readonly SentinelIssue[]
+  readonly occurrences: ReadonlyMap<string, readonly SentinelOccurrence[]>
 }
 
 const attributeTypes = new Set([
@@ -34,10 +34,10 @@ const urlAttributes = new Set([
   ...contract.embedded_html.url_attributes,
 ])
 
-export function inspectSentinelOutput(
+export const inspectSentinelOutput = (
   output: string,
   sentinels: ReadonlyMap<string, readonly string[]>,
-): SentinelInspection {
+): SentinelInspection => {
   const occurrences = new Map<string, SentinelOccurrence[]>(
     [...sentinels.keys()].map((token) => [token, []]),
   )
@@ -90,7 +90,7 @@ export function inspectSentinelOutput(
   return { issues, occurrences }
 }
 
-function outputContext(node: AstNode, ancestors: AstNode[]): string {
+const outputContext = (node: AstNode, ancestors: AstNode[]): string => {
   if (node.type === "HtmlComment") return "none"
 
   const attribute = [...ancestors]
@@ -107,11 +107,9 @@ function outputContext(node: AstNode, ancestors: AstNode[]): string {
   return "html_text"
 }
 
-function occurrenceCount(source: string, token: string): number {
-  return source.split(token).length - 1
-}
+const occurrenceCount = (source: string, token: string): number => source.split(token).length - 1
 
-function occurrencePositions(source: string, token: string): number[] {
+const occurrencePositions = (source: string, token: string): number[] => {
   const positions: number[] = []
   let searchStart = 0
   while (searchStart <= source.length) {
@@ -123,22 +121,21 @@ function occurrencePositions(source: string, token: string): number[] {
   return positions
 }
 
-function sameContexts(actual: readonly string[], expected: readonly string[]): boolean {
-  return [...actual].sort().join("\0") === [...expected].sort().join("\0")
-}
+const sameContexts = (actual: readonly string[], expected: readonly string[]): boolean =>
+  [...actual].sort().join("\0") === [...expected].sort().join("\0")
 
-function elementName(node: AstNode | undefined): string {
+const elementName = (node: AstNode | undefined): string => {
   if (!node) return ""
   if (typeof node.name === "string") return node.name
   if (!Array.isArray(node.name)) return ""
   return String((node.name[0] as JsonObject | undefined)?.value ?? "")
 }
 
-function walk(
+const walk = (
   node: AstNode,
   ancestors: AstNode[],
   visit: (node: AstNode, ancestors: AstNode[]) => void,
-): void {
+): void => {
   if (!node || typeof node !== "object") return
   visit(node, ancestors)
 

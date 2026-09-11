@@ -26,7 +26,19 @@
         "noUnusedVariables": "error",
         "noUnusedFunctionParameters": "error"
       },
-      "style": { "useConst": "error", "useTemplate": "error" }
+      "complexity": {
+        "useArrowFunction": "error",
+        "useOptionalChain": "error"
+      },
+      "performance": { "noAccumulatingSpread": "error" },
+      "style": {
+        "noParameterAssign": "error",
+        "useConsistentArrowReturn": "error",
+        "useConst": "error",
+        "useObjectSpread": "error",
+        "useTemplate": "error"
+      },
+      "suspicious": { "noVar": "error" }
     }
   },
   "overrides": [
