@@ -7,6 +7,22 @@ defmodule Letterpress.SchemaTest do
 
   doctest Letterpress.Schema
 
+  test "rejects trailing newlines, explicit invalid defaults, and conflicting shapes" do
+    for variables <- [
+          %{"name\n" => %{"type" => "string"}},
+          %{"name" => %{"type" => "string", "phase" => false}},
+          %{"name" => %{"type" => "string", "context" => nil}},
+          %{
+            "obj" => %{"type" => "object", "properties" => %{}, "items" => %{"type" => "string"}}
+          },
+          %{"list" => %{"type" => "list", "items" => %{"type" => "string"}, "properties" => %{}}},
+          %{"obj" => %{"type" => "object", "properties" => %{"name\n" => %{"type" => "string"}}}}
+        ] do
+      assert {:error, [_]} =
+               Letterpress.Schema.normalize(%{"version" => 1, "variables" => variables})
+    end
+  end
+
   test "normalizes atom keys without creating atoms from input" do
     schema = %{version: 1, variables: %{name: %{type: "string"}}}
 

@@ -9,7 +9,8 @@ defmodule Letterpress.Schema do
 
   Atom keys are accepted at the Elixir boundary. Normalization converts them to
   strings, fills contract defaults, sorts variables, and rejects unknown fields
-  or values that do not match the generated contract.
+  or values that do not match the generated contract. Defaults apply only to
+  omitted fields; conflicting collection shape fields are invalid.
 
   ## Example
 
@@ -22,8 +23,8 @@ defmodule Letterpress.Schema do
 
   alias Letterpress.{CanonicalJSON, Contract, Diagnostic, JSON}
 
-  @name_regex ~r/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\??$/
-  @segment_regex ~r/^[A-Za-z_][A-Za-z0-9_]*\??$/
+  @name_regex ~r/\A[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\??\z/
+  @segment_regex ~r/\A[A-Za-z_][A-Za-z0-9_]*\??\z/
   @allowed_fields ~w(type phase context required default description sensitive items properties)
   @nested_fields ~w(type required default description sensitive items properties)
 
@@ -137,8 +138,8 @@ defmodule Letterpress.Schema do
     phases = Contract.get()["phases"]
     contexts = Contract.get()["contexts"]
     type = definition["type"]
-    phase = definition["phase"] || "delivery"
-    context = definition["context"] || "text"
+    phase = Map.get(definition, "phase", "delivery")
+    context = Map.get(definition, "context", "text")
 
     with :ok <- validate_fields(name, unknown),
          :ok <- validate_member(name, "type", type, types),
@@ -237,7 +238,8 @@ defmodule Letterpress.Schema do
   defp validate_description(_, _), do: :ok
 
   defp normalize_shape(name, %{"type" => "object"} = definition, depth) do
-    with :ok <- validate_schema_depth(name, depth),
+    with :ok <- validate_shape_field(name, definition, "items"),
+         :ok <- validate_schema_depth(name, depth),
          {:ok, properties} <- normalize_properties(name, definition["properties"], depth) do
       normalized =
         definition
@@ -249,7 +251,8 @@ defmodule Letterpress.Schema do
   end
 
   defp normalize_shape(name, %{"type" => "list"} = definition, depth) do
-    with :ok <- validate_schema_depth(name, depth),
+    with :ok <- validate_shape_field(name, definition, "properties"),
+         :ok <- validate_schema_depth(name, depth),
          {:ok, items} <- normalize_nested_definition("#{name}[]", definition["items"], depth + 1) do
       normalized =
         definition
@@ -300,6 +303,12 @@ defmodule Letterpress.Schema do
   defp normalize_properties(name, _, _) do
     {:error,
      [Diagnostic.simple("LP_SCHEMA_PROPERTIES", "Object variable #{name} needs properties")]}
+  end
+
+  defp validate_shape_field(name, definition, field) do
+    if Map.has_key?(definition, field),
+      do: {:error, [Diagnostic.simple("LP_SCHEMA_SHAPE", "#{field} is invalid for #{name}")]},
+      else: :ok
   end
 
   defp normalize_nested_definition(name, definition, depth)
