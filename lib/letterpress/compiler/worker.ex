@@ -6,6 +6,9 @@ defmodule Letterpress.Compiler.Worker do
   IDs, and process exits fail queued callers and terminate the worker so its
   supervisor establishes a fresh protocol boundary.
 
+  Deadlines start at submission. Queued requests expire independently and
+  release their payloads without interrupting the active request.
+
   This is an implementation module. Applications supervise
   `Letterpress.Compiler.Supervisor` and use `Letterpress` or
   `Letterpress.Compiler`, rather than starting or calling workers directly.
@@ -18,6 +21,7 @@ defmodule Letterpress.Compiler.Worker do
           port: port(),
           pending: nil | map(),
           queue: :queue.queue(),
+          waiting: map(),
           max_frame_bytes: pos_integer()
         }
 
@@ -51,7 +55,8 @@ defmodule Letterpress.Compiler.Worker do
   @spec request(atom(), non_neg_integer(), atom(), map(), timeout()) ::
           {:ok, map()} | {:error, term()}
   def request(pool, index, operation, payload, timeout) do
-    GenServer.call(via(pool, index), {:request, operation, payload, timeout}, timeout + 1_000)
+    deadline = System.monotonic_time(:millisecond) + timeout
+    GenServer.call(via(pool, index), {:request, operation, payload, deadline}, timeout + 1_000)
   rescue
     ArgumentError -> {:error, :compiler_unavailable}
   catch
@@ -69,14 +74,27 @@ defmodule Letterpress.Compiler.Worker do
          port: port,
          pending: nil,
          queue: :queue.new(),
+         waiting: %{},
          max_frame_bytes: Keyword.get(opts, :max_frame_bytes, 2_000_000)
        }}
     end
   end
 
   @impl GenServer
-  def handle_call({:request, operation, payload, timeout}, from, state) do
-    request = %{from: from, operation: operation, payload: payload, timeout: timeout}
+  def handle_call({:request, operation, payload, deadline}, from, state) do
+    id = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
+    remaining = max(deadline - System.monotonic_time(:millisecond), 0)
+    timer = Process.send_after(self(), {:compiler_timeout, id}, remaining)
+
+    request = %{
+      from: from,
+      operation: operation,
+      payload: payload,
+      deadline: deadline,
+      id: id,
+      timer: timer
+    }
+
     {:noreply, enqueue_or_start(state, request)}
   end
 
@@ -85,10 +103,14 @@ defmodule Letterpress.Compiler.Worker do
       when is_map(pending) do
     with true <- byte_size(frame) <= state.max_frame_bytes,
          {:ok, response} <- Jason.decode(frame),
-         true <- response["id"] == pending.id do
-      _ = Process.cancel_timer(pending.timer)
-      GenServer.reply(pending.from, response_result(response))
-      {:noreply, start_next(%{state | pending: nil})}
+         %{"id" => id} when id == pending.id <- response do
+      if expired?(pending) do
+        stop_protocol(state, :compiler_timeout)
+      else
+        _ = Process.cancel_timer(pending.timer)
+        GenServer.reply(pending.from, response_result(response))
+        {:noreply, start_next(%{state | pending: nil})}
+      end
     else
       _ -> stop_protocol(state, :compiler_protocol_error)
     end
@@ -97,6 +119,12 @@ defmodule Letterpress.Compiler.Worker do
   def handle_info({:compiler_timeout, id}, %{pending: %{id: id} = pending} = state) do
     GenServer.reply(pending.from, {:error, :compiler_timeout})
     stop_protocol(%{state | pending: nil}, :compiler_timeout)
+  end
+
+  def handle_info({:compiler_timeout, id}, state) do
+    {request, waiting} = Map.pop(state.waiting, id)
+    if request, do: GenServer.reply(request.from, {:error, :compiler_timeout})
+    {:noreply, %{state | waiting: waiting}}
   end
 
   def handle_info({port, {:exit_status, _}}, %{port: port} = state) do
@@ -162,33 +190,52 @@ defmodule Letterpress.Compiler.Worker do
   defp enqueue_or_start(%{pending: nil} = state, request), do: start_request(state, request)
 
   defp enqueue_or_start(state, request) do
-    %{state | queue: :queue.in(request, state.queue)}
+    %{
+      state
+      | queue: :queue.in(request.id, state.queue),
+        waiting: Map.put(state.waiting, request.id, request)
+    }
   end
 
   defp start_request(state, request) do
-    id = Base.url_encode64(:crypto.strong_rand_bytes(12), padding: false)
+    if expired?(request) do
+      _ = Process.cancel_timer(request.timer)
+      GenServer.reply(request.from, {:error, :compiler_timeout})
+      start_next(state)
+    else
+      send_request(state, request)
+    end
+  end
 
+  defp expired?(request), do: System.monotonic_time(:millisecond) >= request.deadline
+
+  defp send_request(state, request) do
     frame =
       Jason.encode!(%{
-        "id" => id,
+        "id" => request.id,
         "operation" => Atom.to_string(request.operation),
         "payload" => request.payload
       })
 
     if byte_size(frame) > state.max_frame_bytes do
+      _ = Process.cancel_timer(request.timer)
       GenServer.reply(request.from, {:error, :compiler_frame_too_large})
       start_next(state)
     else
       true = Port.command(state.port, frame)
-      timer = Process.send_after(self(), {:compiler_timeout, id}, request.timeout)
-      %{state | pending: Map.merge(request, %{id: id, timer: timer})}
+      %{state | pending: request}
     end
   end
 
   defp start_next(state) do
     case :queue.out(state.queue) do
-      {{:value, request}, queue} -> start_request(%{state | queue: queue}, request)
-      {:empty, _} -> state
+      {{:value, id}, queue} ->
+        {request, waiting} = Map.pop(state.waiting, id)
+        state = %{state | queue: queue, waiting: waiting}
+        if request, do: start_request(state, request), else: start_next(state)
+
+      {:empty, _} ->
+        state
     end
   end
 
@@ -198,18 +245,19 @@ defmodule Letterpress.Compiler.Worker do
 
   defp stop_protocol(state, reason) do
     fail_waiters(state, reason)
-    {:stop, reason, %{state | pending: nil, queue: :queue.new()}}
+    {:stop, reason, %{state | pending: nil, queue: :queue.new(), waiting: %{}}}
   end
 
-  defp fail_waiters(%{pending: pending, queue: queue}, reason) do
+  defp fail_waiters(%{pending: pending, waiting: waiting}, reason) do
     if pending do
       _ = Process.cancel_timer(pending.timer)
       GenServer.reply(pending.from, {:error, reason})
     end
 
-    queue
-    |> :queue.to_list()
-    |> Enum.each(&GenServer.reply(&1.from, {:error, reason}))
+    Enum.each(waiting, fn {_, request} ->
+      _ = Process.cancel_timer(request.timer)
+      GenServer.reply(request.from, {:error, reason})
+    end)
   end
 
   defp via(pool, index), do: {:via, Registry, {pool, index}}

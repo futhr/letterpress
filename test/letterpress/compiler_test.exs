@@ -13,6 +13,37 @@ defmodule Letterpress.CompilerTest do
   doctest Letterpress.Compiler.Supervisor
   doctest Letterpress.Compiler.Worker
 
+  test "a request that expires before the worker handles it cannot succeed" do
+    start_supervised!(
+      {Letterpress.Compiler.Supervisor, pool: Letterpress.DeadlinePool, pool_size: 1}
+    )
+
+    assert {:ok, "warm"} =
+             Letterpress.format("text/liquid@1", "warm", compiler_pool: Letterpress.DeadlinePool)
+
+    [{pid, _}] = Registry.lookup(Letterpress.DeadlinePool, 0)
+    :ok = :sys.suspend(pid)
+
+    task =
+      Task.async(fn ->
+        Letterpress.format("text/liquid@1", "ok",
+          compiler_pool: Letterpress.DeadlinePool,
+          compiler_timeout: 10
+        )
+      end)
+
+    try do
+      Process.sleep(50)
+    after
+      :sys.resume(pid)
+    end
+
+    assert {:error, [%{code: "LP_COMPILER_TIMEOUT"}]} = Task.await(task)
+
+    assert {:ok, "next"} =
+             Letterpress.format("text/liquid@1", "next", compiler_pool: Letterpress.DeadlinePool)
+  end
+
   test "compile numbers retain exact values through the Node boundary" do
     for {number, type} <- [
           {9_007_199_254_740_993, "integer"},
@@ -34,6 +65,36 @@ defmodule Letterpress.CompilerTest do
       assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", "{{ n }}", schema)
       assert {:ok, %{text: ^text}} = Letterpress.render(artifact, %{})
     end
+  end
+
+  test "queued requests expire independently while the compiler is paused" do
+    start_supervised!(
+      {Letterpress.Compiler.Supervisor, pool: Letterpress.QueueDeadlinePool, pool_size: 1}
+    )
+
+    opts = [compiler_pool: Letterpress.QueueDeadlinePool]
+    assert {:ok, "warm"} = Letterpress.format("text/liquid@1", "warm", opts)
+    [{pid, _}] = Registry.lookup(Letterpress.QueueDeadlinePool, 0)
+    {:os_pid, os_pid} = Port.info(:sys.get_state(pid).port, :os_pid)
+    {_, 0} = signal_compiler(os_pid, "-STOP")
+
+    task = Task.async(fn -> Letterpress.format("text/liquid@1", "first", opts) end)
+
+    try do
+      assert eventually(fn -> :sys.get_state(pid).pending != nil end)
+
+      assert {:error, [%{code: "LP_COMPILER_TIMEOUT"}]} =
+               Letterpress.format(
+                 "text/liquid@1",
+                 "expired",
+                 Keyword.put(opts, :compiler_timeout, 20)
+               )
+    after
+      signal_compiler(os_pid, "-CONT")
+    end
+
+    assert {:ok, "first"} = Task.await(task)
+    assert {:ok, "next"} = Letterpress.format("text/liquid@1", "next", opts)
   end
 
   test "sentinel restoration treats dollar replacement patterns literally" do
@@ -596,4 +657,9 @@ defmodule Letterpress.CompilerTest do
   end
 
   defp eventually(_, 0), do: false
+
+  defp signal_compiler(os_pid, signal) do
+    environment = Enum.map(System.get_env(), fn {key, _} -> {key, nil} end)
+    System.cmd("kill", [signal, to_string(os_pid)], env: environment)
+  end
 end
