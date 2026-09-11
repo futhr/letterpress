@@ -68,15 +68,20 @@ defmodule Letterpress.Renderer do
 
     Telemetry.span(:render, profile, input_size(values), fn ->
       with {:ok, opts} <- validate_options(opts),
-           {:ok, decoded} <- decode(artifact),
-           {:ok, normalized_values} <- validate_values(decoded, values, opts),
-           {:ok, rendered} <- isolated_render(decoded, normalized_values, opts) do
+           {:ok, rendered} <- isolated_render(artifact, values, opts) do
         {:ok, rendered}
       else
         {:error, diagnostics} when is_list(diagnostics) -> {:error, diagnostics}
         {:error, reason} -> {:error, [runtime_diagnostic(reason, decoded_source_hash(artifact))]}
       end
     end)
+  end
+
+  defp do_render(artifact, values, opts) do
+    with {:ok, decoded} <- decode(artifact),
+         {:ok, normalized_values} <- validate_values(decoded, values, opts) do
+      render_channels(decoded, normalized_values, opts)
+    end
   end
 
   defp decode(%Artifact{} = artifact) do
@@ -93,8 +98,10 @@ defmodule Letterpress.Renderer do
     with {:ok, values} <- JSON.normalize_object(values),
          :ok <- validate_input_limits(values),
          :ok <- validate_known_values(artifact.variables, values, opts),
-         :ok <- validate_definitions(artifact.variables, values) do
-      {:ok, apply_defaults(artifact.variables, values)}
+         :ok <- validate_definitions(artifact.variables, values),
+         effective_values = apply_defaults(artifact.variables, values),
+         :ok <- validate_input_limits(effective_values) do
+      {:ok, effective_values}
     end
   end
 
@@ -164,7 +171,7 @@ defmodule Letterpress.Renderer do
 
     {pid, monitor} =
       :erlang.spawn_opt(
-        fn -> send(parent, {ref, render_channels(artifact, values, opts)}) end,
+        fn -> send(parent, {ref, do_render(artifact, values, opts)}) end,
         [:monitor, {:max_heap_size, %{size: max_heap, kill: true, error_logger: false}}]
       )
 
@@ -179,7 +186,16 @@ defmodule Letterpress.Renderer do
       timeout ->
         Process.exit(pid, :kill)
         receive do: ({:DOWN, ^monitor, :process, ^pid, _} -> :ok)
+        discard_result(ref)
         {:error, :render_timeout}
+    end
+  end
+
+  defp discard_result(ref) do
+    receive do
+      {^ref, _} -> :ok
+    after
+      0 -> :ok
     end
   end
 

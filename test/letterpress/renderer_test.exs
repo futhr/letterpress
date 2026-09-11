@@ -193,6 +193,37 @@ defmodule Letterpress.RendererTest do
              Letterpress.render(artifact, %{"recipient" => %{}})
   end
 
+  test "effective values cannot bypass input budgets through defaults" do
+    cases = [
+      {%{type: "string", default: String.duplicate("x", 100_001)}, "LP_RENDER_INPUT_SCALAR"},
+      {%{type: "list", items: %{type: "string"}, default: List.duplicate("x", 1001)},
+       "LP_RENDER_INPUT_ITEMS"},
+      {%{
+         type: "object",
+         properties: %{child: %{type: "string", default: String.duplicate("x", 100_001)}},
+         default: %{}
+       }, "LP_RENDER_INPUT_SCALAR"}
+    ]
+
+    for {definition, code} <- cases do
+      schema = %{version: 1, variables: %{value: definition}}
+      assert {:ok, artifact, _} = Letterpress.compile("text/liquid@1", "{{ value }}", schema)
+      assert {:error, [%{code: ^code}]} = Letterpress.render(artifact, %{})
+    end
+  end
+
+  test "artifact validation runs under the render heap limit", %{text: artifact} do
+    map =
+      Artifact.to_map(artifact)
+      |> Map.put(
+        "lint",
+        List.duplicate(%{"severity" => "hint", "code" => "test", "message" => "test"}, 20_000)
+      )
+
+    assert {:error, [%{code: "LP_RENDER_RESOURCE_LIMIT"}]} =
+             Letterpress.render(map, %{}, max_heap_words: 10_000)
+  end
+
   test "rejects every render-input budget violation before Liquid execution", %{text: artifact} do
     too_deep = Enum.reduce(1..13, "value", fn index, acc -> %{"level_#{index}" => acc} end)
 

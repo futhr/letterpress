@@ -46,6 +46,11 @@ decode and render. Rendering runs in an isolated BEAM process with strict
 variables, output limits, collection/loop budgets, a timeout, and an
 allow-listed Liquid surface.
 
+The render deadline and process heap limit cover artifact validation and value
+normalization as well as Liquid execution. Input budgets also check values
+introduced by schema defaults. Heap limits do not cap total VM resident memory
+or eliminate the cost of transferring input into the isolated process.
+
 For email artifacts, pass the plain-text alternative as the `:text` compile
 option. It is schema-checked and stored with the HTML and subject so delivery
 renders all configured channels atomically.
