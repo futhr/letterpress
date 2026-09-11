@@ -67,7 +67,7 @@ translated
 
 %{
   hash_preserved: decoded.content_sha256 == artifact.content_sha256,
-  canonical_bytes: byte_size(json),
+  canonical_round_trip: Letterpress.encode_artifact(decoded) == {:ok, json},
   text: rendered.text
 }
 ```
@@ -75,9 +75,9 @@ translated
 <!-- livebook:{"output":true} -->
 
 ```
-%{canonical_bytes: 1237, hash_preserved: true, text: "Hej Mira!"}
+%{canonical_round_trip: true, hash_preserved: true, text: "Hej Mira!"}
 ```
 
-The byte count is specific to this artifact shape and Letterpress version. The
-contractual property is canonical encoding and hash verification, not a fixed
-artifact size.
+The round trip preserves the exact canonical bytes and content hash. Artifact
+size varies with its content and compiler provenance, including the Node
+version, so the example does not assume a fixed byte count.
