@@ -13,6 +13,37 @@ defmodule Letterpress.CompilerTest do
   doctest Letterpress.Compiler.Supervisor
   doctest Letterpress.Compiler.Worker
 
+  test "malformed response envelopes fail the caller and stop the protocol" do
+    for response <- [
+          %{"id" => "request", "ok" => true, "result" => 42},
+          %{"id" => "request"},
+          %{"id" => "request", "ok" => false, "error" => %{}}
+        ] do
+      reply = make_ref()
+      timer = Process.send_after(self(), :unexpected_timeout, 60_000)
+
+      state = %{
+        port: :test_port,
+        pending: %{
+          id: "request",
+          timer: timer,
+          from: {self(), reply},
+          deadline: System.monotonic_time(:millisecond) + 1000
+        },
+        queue: :queue.new(),
+        waiting: %{},
+        max_frame_bytes: 1000
+      }
+
+      frame = Jason.encode!(response)
+
+      assert {:stop, :compiler_protocol_error, %{pending: nil}} =
+               Letterpress.Compiler.Worker.handle_info({:test_port, {:data, frame}}, state)
+
+      assert_receive {^reply, {:error, :compiler_protocol_error}}
+    end
+  end
+
   test "a request that expires before the worker handles it cannot succeed" do
     start_supervised!(
       {Letterpress.Compiler.Supervisor, pool: Letterpress.DeadlinePool, pool_size: 1}

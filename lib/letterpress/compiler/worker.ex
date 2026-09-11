@@ -103,12 +103,13 @@ defmodule Letterpress.Compiler.Worker do
       when is_map(pending) do
     with true <- byte_size(frame) <= state.max_frame_bytes,
          {:ok, response} <- Jason.decode(frame),
-         %{"id" => id} when id == pending.id <- response do
+         %{"id" => id} when id == pending.id <- response,
+         {:ok, result} <- response_result(response) do
       if expired?(pending) do
         stop_protocol(state, :compiler_timeout)
       else
         _ = Process.cancel_timer(pending.timer)
-        GenServer.reply(pending.from, response_result(response))
+        GenServer.reply(pending.from, result)
         {:noreply, start_next(%{state | pending: nil})}
       end
     else
@@ -239,9 +240,13 @@ defmodule Letterpress.Compiler.Worker do
     end
   end
 
-  defp response_result(%{"ok" => true, "result" => result}), do: {:ok, result}
-  defp response_result(%{"ok" => false, "error" => error}), do: {:error, {:compiler_error, error}}
-  defp response_result(_), do: {:error, :compiler_protocol_error}
+  defp response_result(%{"ok" => true, "result" => result}) when is_map(result),
+    do: {:ok, {:ok, result}}
+
+  defp response_result(%{"ok" => false, "error" => error}) when is_binary(error),
+    do: {:ok, {:error, {:compiler_error, error}}}
+
+  defp response_result(_), do: :error
 
   defp stop_protocol(state, reason) do
     fail_waiters(state, reason)
