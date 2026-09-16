@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.3](https://github.com/futhr/letterpress/compare/v0.1.2...v0.1.3) (2026-09-16)
+
+
+
+
+### Bug Fixes:
+
+* release: keep version assertion in sync by Tobias Bohwalli
+
 ## [v0.1.2](https://github.com/futhr/letterpress/compare/v0.1.1...v0.1.2) (2026-09-16)
 
 

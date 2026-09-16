@@ -1,7 +1,7 @@
 defmodule Letterpress.MixProject do
   use Mix.Project
 
-  @version "0.1.2"
+  @version "0.1.3"
   @source_url "https://github.com/futhr/letterpress"
 
   def project do
