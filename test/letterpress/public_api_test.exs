@@ -54,7 +54,7 @@ defmodule Letterpress.PublicAPITest do
   end
 
   test "exposes the versioned profiles and generated contract" do
-    assert Letterpress.version() == "0.1.1"
+    assert Letterpress.version() == Mix.Project.config()[:version]
 
     assert Letterpress.profiles() == [
              "email/mjml-liquid@1",
