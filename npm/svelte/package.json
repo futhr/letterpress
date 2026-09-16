@@ -1,6 +1,6 @@
 {
   "name": "@letterpress/svelte",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "An accessible, themeable Svelte 5 editor shell for Letterpress.",
   "license": "MIT",
   "type": "module",

@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.2](https://github.com/futhr/letterpress/compare/v0.1.1...v0.1.2) (2026-09-16)
+
+
+
+
+### Bug Fixes:
+
+* language: support peers without optional brace closing by Tobias Bohwalli
+
+* compiler: restart workers after malformed response envelopes by Tobias Bohwalli
+
+* liquid: recognize scoped loop metadata across runtimes by Tobias Bohwalli
+
+* translation: enforce complete localized channel limits by Tobias Bohwalli
+
+* compiler: include queue time in request deadlines by Tobias Bohwalli
+
+* renderer: enforce budgets across validation and defaults by Tobias Bohwalli
+
+* artifact: validate delivery syntax before accepting channels by Tobias Bohwalli
+
+* compiler: preserve numeric values and literal replacements by Tobias Bohwalli
+
+* schema: reject invalid identifiers and conflicting fields by Tobias Bohwalli
+
+* artifact: reject ambiguous JSON and verify schema identity by Tobias Bohwalli
+
+### Performance Improvements:
+
+* compiler: reuse native schema objects for variable lookup by Tobias Bohwalli
+
 ## [v0.1.1](https://github.com/futhr/letterpress/compare/v0.1.0...v0.1.1) (2026-09-07)
 
 
