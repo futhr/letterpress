@@ -4,7 +4,7 @@ document_id: "LP.01"
 status: "Accepted for implementation"
 version: 1
 created: "2026-08-30"
-last_updated: "2026-09-06"
+last_updated: "2026-09-30"
 ---
 
 # LP.01 - Letterpress compiler, runtime, and editor contract
@@ -443,6 +443,15 @@ reconfigures theme and profile without recreating history, exposes save/change/
 format hooks, and provides configurable line numbers, fold/lint gutters,
 matching, indentation, search, completion, line wrapping, and placeholders. It
 does not call a backend or decide UI layout.
+
+The editor emits no product shell, task navigation, cards, dashboard,
+container-profile thresholds or publication controls. Consumers compose those
+around the editor and keep the same component instance mounted when changing
+layout if selection, focus and undo history must continue. Controlled source,
+schema and diagnostics preserve authoritative values across a remount; they do
+not serialize CodeMirror selection or history. A consumer must not interpret an
+editor layout change, local diagnostic or preview as backend compilation,
+review or publication authority.
 
 The normal theming boundary is a plain `LetterpressEditorTheme` value containing
 complete `light` and `dark` palettes. The package ships an accessible reference

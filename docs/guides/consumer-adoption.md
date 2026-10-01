@@ -22,6 +22,14 @@ system. Old and new application versions must coexist until every active
 publication has a verified artifact and delivery no longer reads the legacy
 field.
 
+For a browser authoring surface, keep task composition and design-system policy
+in the consumer. The `@letterpress/svelte` component owns editor behavior, not
+the application shell. Container-profile changes must preserve the consumer's
+template revision, draft, backend diagnostic freshness, review/publication
+authority and recovery state. Keep the editor mounted when selection, focus and
+undo continuity are required; controlled props do not serialize those
+CodeMirror internals across a remount.
+
 Translation providers receive only extracted translation units. For email,
 pass the original subject and plain-text alternative while extracting, then
 apply provider responses with `Letterpress.localize/5`. It returns the MJML,

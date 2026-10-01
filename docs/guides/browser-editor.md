@@ -21,6 +21,36 @@ line numbers, folding, lint markers, matching, indentation, completion, search,
 line wrapping, save/format keys, and controlled updates. The host owns layout,
 persistence, backend calls, draft state, AI actions, and publication.
 
+## Adaptive host composition
+
+Start the authoring surface from its task: compose source, inspect diagnostics,
+compare preview/output, act on a reviewed compile or publication command, or
+monitor validation work. Letterpress supplies only the editor region. The host
+owns navigation, preview, diagnostics summary, approval, save/recovery controls
+and the design system that joins them.
+
+When the host uses compact (below 600 CSS px), medium (600--839 CSS px) and
+expanded (840 CSS px and above) content-container profiles, rearrange the
+regions around the same mounted editor instance. Moving preview or diagnostics
+between inline, disclosure and adjacent placement must preserve source,
+profile, schema, source hash, document version, selection, focus and undo
+history. Remounting preserves only the controlled props; CodeMirror selection
+and undo history are not serialized by Letterpress.
+
+Compact composition must not hide current diagnostics, stale-validation state,
+unsaved changes, the authoritative backend compile result, publication
+authority or the recovery action for a failed save/format/compile. A local
+diagnostic or rendered preview is never approval. Use cards only for
+independently selectable templates or artifacts, and use a dashboard only for a
+recurring monitoring or decision task.
+
+Host acceptance should exercise the same authoring fixture at the 599/600 and
+839/840 CSS-pixel edges with keyboard, screen reader, coarse pointer and reduced
+motion. Verify focus and history continuity, stale backend-diagnostic refusal,
+failed save/format recovery and backend compilation before publication. These
+tests belong to the consumer because Letterpress does not own the application
+shell.
+
 Letterpress supplies a complete light/dark reference theme. Use it directly,
 override its `--letterpress-editor-*` custom properties, or create a paired host
 theme with `createLetterpressEditorTheme`. Palette values may reference host CSS

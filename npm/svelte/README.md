@@ -37,6 +37,11 @@ peer-deduplicated hosts.
 
 The component does not own product layout. Place it in the host product's own
 container and map the paired theme to that product's semantic tokens.
+It emits no breakpoint, card, dashboard, task-navigation, approval or
+publication policy. Resize or rearrange the host around the same mounted editor
+when selection, focus and undo history must continue. A remount restores the
+controlled source/schema/diagnostic values but creates new CodeMirror selection
+and history state.
 
 Hosts that edit a preprocessing language may set `clientDiagnostics={false}`
 and pass diagnostics from the backend after expansion. Grammar, highlighting,
