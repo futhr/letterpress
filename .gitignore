@@ -15,6 +15,6 @@ erl_crash.dump
 *.tsbuildinfo
 
 /priv/plts/
-/.agents/
+**/.claude/
 /.codex/
 .DS_Store
