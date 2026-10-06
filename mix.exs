@@ -46,10 +46,10 @@ defmodule Letterpress.MixProject do
     [
       {:jason, "~> 1.4"},
       {:nimble_options, "~> 1.1"},
-      {:solid, "~> 1.3"},
+      {:solid, "~> 1.3 and >= 1.3.4"},
       {:telemetry, "~> 1.3"},
       {:git_ops, "~> 2.6", only: :dev, runtime: false},
-      {:ex_check, "~> 0.16", only: :dev, runtime: false},
+      {:ex_check, "~> 0.17", only: :dev, runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

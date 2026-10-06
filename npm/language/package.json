@@ -41,7 +41,7 @@
     "@codemirror/view": "^6.0.0"
   },
   "dependencies": {
-    "@shopify/liquid-html-parser": "2.10.0"
+    "@shopify/liquid-html-parser": "2.10.2"
   },
   "homepage": "https://github.com/futhr/letterpress",
   "repository": {

@@ -70,6 +70,25 @@ defmodule Letterpress.RendererTest do
     refute rendered.html =~ "Open account"
   end
 
+  test "blank and empty comparisons select complementary branches" do
+    source =
+      "{% if value == blank %}blank{% else %}present{% endif %}|" <>
+        "{% if value != blank %}present{% else %}blank{% endif %}|" <>
+        "{% if value == empty %}empty{% else %}filled{% endif %}|" <>
+        "{% if value != empty %}filled{% else %}empty{% endif %}"
+
+    schema = %{version: 1, variables: %{value: %{type: "string", context: "none"}}}
+    assert {:ok, artifact, []} = Letterpress.compile("text/liquid@1", source, schema)
+
+    for {value, expected} <- [
+          {"", "blank|blank|empty|empty"},
+          {" \t\n", "blank|blank|filled|filled"},
+          {"hello", "present|present|filled|filled"}
+        ] do
+      assert {:ok, %{text: ^expected}} = Letterpress.render(artifact, %{"value" => value})
+    end
+  end
+
   test "rejects unsafe URLs, missing values, wrong types, and oversized output", %{
     email: email,
     text: text
