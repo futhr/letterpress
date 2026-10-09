@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest"
 import fixtures from "../conformance/fixtures.json"
+import contract from "../generated/letterpress-v1.json"
+import manifest from "../package.json"
 import { dispatch, type Request } from "./operations"
 
 const freeze = <T>(value: T): T => {
@@ -11,6 +13,28 @@ const freeze = <T>(value: T): T => {
 }
 
 describe("compiler operation ownership", () => {
+  test("stamps compiler provenance from the pinned build inputs", async () => {
+    const result = await dispatch({
+      id: "compiler-provenance",
+      operation: "compile",
+      payload: {
+        profile: "text/liquid@1",
+        source: "Pinned compiler inputs",
+        schema: { version: 1, variables: {} },
+      },
+    })
+
+    expect(result.diagnostics).toEqual([])
+    expect(result.compiler).toMatchObject({
+      mjml: manifest.dependencies.mjml,
+      parser: manifest.dependencies["@shopify/liquid-html-parser"],
+    })
+    expect(contract.generated_from.mjml).toBe(manifest.dependencies.mjml)
+    expect(contract.profiles["email/mjml-liquid@1"].compiler).toBe(
+      `mjml@${manifest.dependencies.mjml}`,
+    )
+  })
+
   test.each(fixtures.analysis)("analyzes frozen inputs: $name", async (fixture) => {
     const request = freeze({
       id: fixture.name,

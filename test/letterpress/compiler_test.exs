@@ -215,8 +215,16 @@ defmodule Letterpress.CompilerTest do
 
     assert Enum.all?(diagnostics, &(&1.severity != :error))
     assert first.profile == "email/mjml-liquid@1"
-    assert first.compiler["mjml"] == "5.4.0"
-    assert first.compiler["parser"] == "2.10.0"
+
+    dependencies =
+      __DIR__
+      |> Path.join("../../package.json")
+      |> File.read!()
+      |> Jason.decode!()
+      |> Map.fetch!("dependencies")
+
+    assert first.compiler["mjml"] == dependencies["mjml"]
+    assert first.compiler["parser"] == dependencies["@shopify/liquid-html-parser"]
     assert first.html =~ "{% if show_message %}"
     assert first.html =~ ~s(letterpress_escape: "html_text")
     assert first.html =~ ~s(letterpress_escape: "url")

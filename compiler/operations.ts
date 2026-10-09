@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto"
 import process from "node:process"
 import { toLiquidHtmlAST } from "@shopify/liquid-html-parser"
+import parserPackage from "@shopify/liquid-html-parser/package.json"
 import liquidPlugin from "@shopify/prettier-plugin-liquid"
 import mjml2html from "mjml"
+import mjmlPackage from "mjml/package.json"
 import prettier from "prettier"
 import contract from "../generated/letterpress-v1.json"
 import { inspectSentinelOutput } from "./sentinel"
@@ -2014,8 +2016,8 @@ const offsetForLineColumn = (source: string, oneBasedLine: number, column: numbe
 
 const compilerVersions = (): JsonObject => ({
   node: process.versions.node,
-  mjml: "5.4.0",
-  parser: "2.10.0",
+  mjml: mjmlPackage.version,
+  parser: parserPackage.version,
 })
 
 const sha256 = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex")

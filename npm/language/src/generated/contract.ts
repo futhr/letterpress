@@ -8,7 +8,7 @@ export const contract = {
     "email/mjml-liquid@1": {
       "kind": "email",
       "language": "mjml-liquid",
-      "compiler": "mjml@5.4.0",
+      "compiler": "mjml@5.4.1",
       "root": "mjml",
       "elements": [
         "mjml",
@@ -1482,7 +1482,7 @@ export const contract = {
     "output_bytes": 1000000
   },
   "generated_from": {
-    "mjml": "5.4.0",
+    "mjml": "5.4.1",
     "source": "contract/letterpress-v1.json"
   }
 } as const

@@ -7,7 +7,7 @@
     "email/mjml-liquid@1": {
       "kind": "email",
       "language": "mjml-liquid",
-      "compiler": "mjml@5.4.0",
+      "compiler": "mjml@5.4.1",
       "root": "mjml",
       "elements": [
         "mjml",

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import "mjml"
+import mjmlPackage from "mjml/package.json" with { type: "json" }
 import core from "mjml-core"
 import preset from "mjml-preset-core"
 
@@ -7,6 +8,13 @@ const sourcePath = "contract/letterpress-v1.json"
 const generatedPath = "generated/letterpress-v1.json"
 const browserPath = "npm/language/src/generated/contract.ts"
 const source = JSON.parse(await readFile(sourcePath, "utf8"))
+const manifest = JSON.parse(await readFile("package.json", "utf8"))
+if (mjmlPackage.version !== manifest.dependencies.mjml) {
+  throw new Error("Installed MJML does not match the pinned compiler input")
+}
+if (source.profiles["email/mjml-liquid@1"].compiler !== `mjml@${mjmlPackage.version}`) {
+  throw new Error("The email profile does not describe the installed MJML compiler")
+}
 
 const componentMetadata = Object.fromEntries(
   Object.entries(core.components)
@@ -77,7 +85,7 @@ const nesting = Object.fromEntries(
 const generated = {
   ...source,
   generated_from: {
-    mjml: "5.4.0",
+    mjml: mjmlPackage.version,
     source: sourcePath,
   },
   profiles: {
