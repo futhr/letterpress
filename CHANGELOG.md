@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.4](https://github.com/futhr/letterpress/compare/v0.1.3...v0.1.4) (2026-10-10)
+
+
+
+
+### Bug Fixes:
+
+* stamp compiler provenance from pinned build inputs by futhr
+
 ## [v0.1.3](https://github.com/futhr/letterpress/compare/v0.1.2...v0.1.3) (2026-09-16)
 
 
