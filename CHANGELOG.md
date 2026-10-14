@@ -5,6 +5,14 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## Unreleased
+
+### Maintenance
+
+- Refresh Elixir and frontend dependency locks, use pnpm 12 and Node 24.21 LTS, and refresh pinned GitHub Actions.
+- Rebuild the bundled compiler with the selected dependency inputs.
+
+
 ## [v0.1.4](https://github.com/futhr/letterpress/compare/v0.1.3...v0.1.4) (2026-10-10)
 
 
