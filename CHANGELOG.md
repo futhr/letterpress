@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.1.5](https://github.com/futhr/letterpress/compare/v0.1.4...v0.1.5) (2026-10-23)
+
+
+
+
+### Bug Fixes:
+
+* ci: invalidate BEAM caches after runtime patch changes by Tobias Bohwalli
+
 ## Unreleased
 
 ### Maintenance
