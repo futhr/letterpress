@@ -1,7 +1,7 @@
 # R.03 - Dependency hardening
 
 Status: adopted with a deferred toolchain migration
-Last reviewed: 2026-09-06
+Last reviewed: 2026-10-23
 
 ## Question
 
@@ -35,7 +35,7 @@ and delivery boundary or introducing an unsupported development toolchain?
   Node/Vite requirements and changed mock defaults in version 5. Letterpress's
   pinned Node 24 and Vite 8 toolchain meets those requirements; the compiler,
   language, and Svelte suites passed with Vitest and coverage-v8 5.0.0.
-- The installed Svelte checker 4.7.6 rejects a standalone TypeScript 7 compiler.
+- Svelte checker 4.7.7 still documents TypeScript 7 through an npm alias.
   Its experimental migration requires TypeScript 6 alongside an aliased
   TypeScript 7 installation. See the
   [language-tools releases](https://github.com/sveltejs/language-tools/releases).
@@ -50,6 +50,19 @@ the lockfile and validate the browser packages and exact release artifacts.
 Defer TypeScript 7 until the Svelte checker supports the intended toolchain
 without an experimental dual-compiler setup. TypeScript 6.0.3 remains locked
 and passes the complete typecheck. No delivery runtime dependency is added.
+
+The October refresh adopts ExCheck 0.17.1 and the compatible CodeMirror,
+Svelte packaging/checking, Vitest, Vite, and Happy DOM updates. Happy DOM
+21.0.4 fixes ESM compiler injection and opaque-origin iframe isolation; see
+its [release notes](https://github.com/capricorn86/happy-dom/releases/tag/v21.0.4).
+
+Two additional updates remain deferred. `@types/mjml` 5.4.0 requires
+`@types/mjml-core ~5.4`, which the npm registry does not provide; the existing
+5.0.0 declarations remain locked. Biome 2.6.2 introduces enabled Markdown and
+YAML formatting that rejects GitOps' generated changelog and pnpm's generated
+lockfile formatting. Keep Biome 2.5.15 until those ownership boundaries have
+a coordinated migration. No dependency patches, overrides, formatter
+exclusions, or weaker checks are introduced for these deferrals.
 
 The repository quality gate owns dependency audits, generated contract checks,
 and regression coverage. A clean audit reports known advisories at the time
