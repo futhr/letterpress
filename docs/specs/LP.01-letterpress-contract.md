@@ -4,7 +4,7 @@ document_id: "LP.01"
 status: "Accepted for implementation"
 version: 1
 created: "2026-08-30"
-last_updated: "2026-09-30"
+last_updated: "2026-10-23"
 ---
 
 # LP.01 - Letterpress compiler, runtime, and editor contract
@@ -542,6 +542,12 @@ Owning unit suites provide the rest of the current proof:
 
 Future fuzz corpora, golden artifacts, or broader property coverage must be
 described as planned work until the corresponding files and gates exist.
+
+Dependency build and PLT cache keys, including restore prefixes, distinguish
+the exact installed OTP and Elixir versions reported by `setup-beam`. A patch
+change in either runtime invalidates those caches. Workflow regressions probe
+both changes independently; hosted CI remains the proof of execution across
+the supported runtime matrix.
 
 ## 15. Release model
 

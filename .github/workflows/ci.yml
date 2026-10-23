@@ -34,6 +34,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        id: beam
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
@@ -48,19 +49,19 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-${{ matrix.elixir }}-${{ matrix.otp }}-
+          key: ${{ runner.os }}-mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: matrix.check == 'full'
         with:
           path: priv/plts/core
-          key: ${{ runner.os }}-plt-core-${{ matrix.elixir }}-${{ matrix.otp }}
+          key: ${{ runner.os }}-plt-core-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: matrix.check == 'full'
         with:
           path: priv/plts/local
-          key: ${{ runner.os }}-plt-local-${{ matrix.elixir }}-${{ matrix.otp }}-${{ hashFiles('mix.lock') }}
-          restore-keys: ${{ runner.os }}-plt-local-${{ matrix.elixir }}-${{ matrix.otp }}-
+          key: ${{ runner.os }}-plt-local-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-plt-local-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
       - run: mkdir -p priv/plts/core priv/plts/local
         if: matrix.check == 'full'
       - run: mix deps.get
