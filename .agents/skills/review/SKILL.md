@@ -21,7 +21,11 @@ Inspect the implementation behind each affected contract claim:
   process/random identifiers, and map-order leaks.
 - Delivery isolation: Node, MJML, file access, network, plugins, and loaders
   stay outside rendering. Worker framing/deadlines and render cleanup remain
-  bounded, with atomic channel results.
+  bounded, with atomic channel results. Check absolute submission deadline,
+  independent queued expiry, response correlation, port retirement and timer/
+  payload cleanup. Render validation/defaults share the isolation budget; owner
+  termination and timeout must not leave late success messages. Read the actual
+  compiler/renderer regressions, rather than assuming supervision proves teardown.
 - Expected errors: authored invalid input returns diagnostics without secret
   values, full source, host paths, or exception dumps.
 - Cross-runtime agreement: generated metadata, UTF-16 ranges, browser rules,
@@ -31,7 +35,15 @@ Inspect the implementation behind each affected contract claim:
   or private product vocabulary enters the library.
 - Evidence: assertions exercise behavior; Livebook saved outputs and benchmark
   claims match their checks. Test exclusions, skipped cases, weak assertions,
-  coverage padding, and relaxed budgets cannot substitute for a proof.
+  coverage padding, and relaxed budgets cannot substitute for a proof. Challenge
+  the changed invariant with an independently expected context/number/diagnostic
+  result and a plausible mutant such as relocated sentinel, truncated exact
+  number, expired queue success or checksum-valid invalid Liquid.
+- Package proof: inspect [release tooling](../../../scripts/release.mjs) and
+  RELEASING before execution. Source conformance, generated bundle, built archive,
+  verified artifact and isolated Hex/npm smoke are separate results. `build`,
+  `verify` and `smoke` do not establish registry publication; never invoke
+  `publish` merely to validate a code or guidance change.
 
 For guidance-only changes, inspect skill triggers, workflow ownership, commands,
 references, and discovery behavior rather than inferring application safety

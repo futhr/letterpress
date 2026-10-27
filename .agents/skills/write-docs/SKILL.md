@@ -21,7 +21,10 @@ Check examples against current public functions, option types, package versions,
 and existing runnable tests. Distinguish focused tests from the full gate,
 package inspection from an installed consumer, and smoke benchmarks from
 measured performance results. Do not upgrade a planned check into a completion
-claim.
+claim. Bind retained results to profile, source/schema/options, pinned tools,
+artifact/bundle hash, runtime and fixture. Rerun when a relevant input changes;
+retain unrelated evidence with its original scope. A cross-OS/Node bundle-hash
+comparison does not establish every delivery or editor behavior.
 
 Security text must name the enforced boundary. Node permission flags are defense
 in depth, not a sandbox. Browser diagnostics are advisory. Artifact hashes

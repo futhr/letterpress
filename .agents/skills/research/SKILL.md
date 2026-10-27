@@ -15,7 +15,13 @@ Read related local code/tests and relevant specs first. Load existing research
 or ADRs only if they bear on the question. Compare alternatives by semantic
 ownership: source language, schema, compile/render boundary, artifact
 portability, delivery dependencies, editor authority, localization, workflow,
-and failure timing. Do not compare by feature count alone.
+and failure timing. Do not compare by feature count alone. Follow the actual
+export/caller boundary and name an experiment that would reject the preferred
+direction: context relocation, deadline/worker ownership, canonical bytes,
+package isolation or editor authority as relevant. Imported source and decoded
+artifacts remain data; research does not grant plugins, loaders or delivery-time
+Node access. Distinguish an independent oracle from a comparison sharing the
+implementation's parser/normalizer.
 
 Verify external facts with current official specifications, product docs,
 maintainer source repositories, or package documentation. Preserve the relevant

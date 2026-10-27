@@ -182,7 +182,11 @@ For changes confined to agent instructions, skills, or discovery links, review
 the workflows against owning code and current official client documentation.
 Check YAML metadata, names, local references, tracking/ignore boundaries, links,
 and `git diff --check` using existing tools. Do not install dependencies or run
-unrelated application suites for that surface.
+unrelated application suites for that surface. Inspect free disk and exact
+output paths before authorized compiler/package/benchmark work. Clean only
+disposable outputs created by that run, preserving shared caches, pinned bundles
+and retained artifacts/results. Code and release gates remain required at their
+stated scope; unavailable evidence is not a pass.
 
 Strict Credo means enabled checks are fixed in code. Do not add exclusions,
 inline disables, weaker thresholds, coverage padding, or changed fixture

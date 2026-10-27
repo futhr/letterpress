@@ -14,10 +14,12 @@ and actual validation results in chat.
    [LP.01](../../../docs/specs/LP.01-letterpress-contract.md). Read the relevant
    implementation and tests. Load linked ADRs or research only when the choice
    they explain is involved.
-2. For a behavior change, write a focused regression that fails because of the
-   requested behavior. A dependency, syntax, harness, or worker-start failure
-   does not establish the regression. Make the change in the owning layer;
-   keep the public facade thin.
+2. For each changed invariant, identify the public profile/source/schema/value
+   trigger, enforcing owner and independently expected success or diagnostic.
+   Retain the relevant malformed, stale, budget or interruption case. A behavior
+   regression must fail at its intended assertion; a dependency, syntax,
+   harness or worker-start failure does not establish it. Make the owning-layer
+   change and keep the public facade thin.
 3. Trace contract changes from [the source contract](../../../contract/letterpress-v1.json)
    through the compiler, Elixir API, generated metadata, language services,
    Svelte types, shared fixtures, exports, and affected user documentation.
@@ -29,7 +31,12 @@ and actual validation results in chat.
 5. Add a shared [conformance fixture](../../../conformance/README.md) for
    grammar, schema-context, or cross-runtime diagnostic changes. Keep worker
    framing, render isolation/budgets, and editor lifecycle regressions in their
-   owning unit suites.
+   owning unit suites. For worker changes inspect caller-owned supervision,
+   absolute submission deadlines, independent queue expiry, response IDs,
+   port retirement and timer/payload cleanup in
+   [compiler tests](../../../test/letterpress/compiler_test.exs). For rendering,
+   verify artifact/default expansion under limits, atomic channels and no late
+   mailbox result in [renderer tests](../../../test/letterpress/renderer_test.exs).
 6. Rerun the regression and the affected existing tests. For shared-contract or
    package changes, also run `pnpm check:conformance`, `pnpm check:exports`,
    `pnpm test:release`, and `pnpm check:release` as applicable. Follow the
