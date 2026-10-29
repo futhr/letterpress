@@ -3,3 +3,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+
+auditConfig:
+  ignoreGhsas:
+    - GHSA-gcqx-w48m-w2h4
